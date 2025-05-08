@@ -215,54 +215,36 @@
                                     <div class="form-group mb-3">
                                         <label class="filter-label">Course</label>
                                         <select class="form-control" id="bedCourse">
-                </div>
-                <div class="col-md-6">
-                    <button class="department-btn ced" data-department="CED">
-                        <i class='bx bx-code-block'></i> Computer Education Department
-                    </button>
-                </div>
-            </div>
-
-            <!-- BED Dashboard -->
-            <div id="bedDashboard" class="dashboard">
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card dashboard-card">
-                            <div class="card-body">
-                                <h5 class="card-title">Filters</h5>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-group mb-3">
-                                            <label class="filter-label">Course</label>
-                                            <select class="form-control" id="bedCourse">
-                                                <!-- Populated dynamically -->
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3">
-                                        <div class="form-group mb-3">
-                                            <label class="filter-label">Year</label>
-                                            <select class="form-control" id="bedYear">
-                                                <!-- Populated dynamically -->
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group mb-3">
-                                            <label class="filter-label">Semester</label>
-                                            <select class="form-control" id="bedSemester">
-                                                <option value="1">First</option>
-                                                <option value="2">Second</option>
-                                            </select>
-                                        </div>
+                                            <!-- Populated dynamically -->
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="row mt-3">
-                                    <div class="col-12">
-                                        <button class="btn btn-primary" onclick="predict('BED')">Generate Forecast</button>
+
+
+
+                                <div class="col-md-3">
+                                    <div class="form-group mb-3">
+                                        <label class="filter-label">Year</label>
+                                        <select class="form-control" id="bedYear">
+                                            <!-- Populated dynamically -->
+                                        </select>
                                     </div>
                                 </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-3">
+                                        <label class="filter-label">Semester</label>
+                                        <select class="form-control" id="bedSemester">
+                                            <option value="1">First</option>
+                                            <option value="2">Second</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <button class="btn btn-primary" onclick="predict('BED')">Generate Forecast</button>
+                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -307,180 +289,152 @@
             </div>
         </div>
 
-        <!-- Application Scripts -->
+        <!-- External Scripts -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        
         <script>
-        // Application state management
-        const appState = {
-            charts: {},
-            data: {},
-            department: 'BED',
-            ui: {
-                dropZone: null,
-                fileInput: null,
-                loader: null
-            }
-        };
-        
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', () => {
-            // Cache DOM elements
-            const dropZone = document.getElementById('uploadArea');
-            const fileInput = document.getElementById('fileInput');
-            const loader = document.getElementById('loadingOverlay');
-            
-            // Store references
-            Object.assign(appState.ui, { dropZone, fileInput, loader });
-            
-            // Initialize components
-            initializeDashboard();
-            setupEventListeners();
-            setupFileHandlers();
-        });
+        (function() {
+            // Application state management
+            const appState = {
+                charts: {},
+                data: {},
+                department: 'BED',
+                ui: null
+            };
 
-        function initializeDashboard() {
-            // Hide all dashboards
-            document.querySelectorAll('.dashboard').forEach(dash => {
-                dash.style.display = 'none';
-            });
-            
-            // Switch to BED department
-            switchDepartment('BED');
-        }
-
-        function setupEventListeners() {
-            document.querySelectorAll('.department-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const department = this.dataset.department;
-                    switchDepartment(department);
-                });
-            });
-        }
-
-        function setupFileHandlers() {
-            const { dropZone, fileInput } = appState.ui;
-            if (!dropZone || !fileInput) return;
-
-            // File input click handler
-            dropZone.addEventListener('click', () => fileInput.click());
-
-            // Drag and drop handlers
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('border-success');
-            });
-
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('border-success');
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('border-success');
-                const file = e.dataTransfer.files[0];
-                if (file) handleFile(file);
-            });
-
-            // File input change handler
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) handleFile(file);
-            });
-        }
-
-        async function predict(department) {
-            const { loader } = appState.ui;
-            if (loader) loader.style.display = 'flex';
-            
-            try {
-                // Get form elements
-                const courseElem = document.getElementById(department.toLowerCase() + 'Course');
-                const yearElem = document.getElementById(department.toLowerCase() + 'Year');
-                const semesterElem = document.getElementById(department.toLowerCase() + 'Semester');
-                
-                if (!courseElem || !yearElem || !semesterElem) {
-                    throw new Error('Required form elements not found');
-                }
-                
-                // Prepare request data
-                const data = {
-                    department,
-                    course: courseElem.value,
-                    year: yearElem.value,
-                    semester: parseInt(semesterElem.value)
+            // Initialize everything when the document is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize UI state
+                appState.ui = {
+                    // Dashboards
+                    bedDashboard: document.getElementById('bedDashboard'),
+                    cedDashboard: document.getElementById('cedDashboard'),
+                    // Forms
+                    bedCourse: document.getElementById('bedCourse'),
+                    bedYear: document.getElementById('bedYear'),
+                    bedSemester: document.getElementById('bedSemester'),
+                    cedCourse: document.getElementById('cedCourse'),
+                    cedYear: document.getElementById('cedYear'),
+                    cedSemester: document.getElementById('cedSemester'),
+                    // File handling
+                    dropZone: document.getElementById('uploadArea'),
+                    fileInput: document.getElementById('fileInput'),
+                    loader: document.getElementById('loadingOverlay')
                 };
-                
-                // Make prediction request
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+
+
+
+                // Initialize application
+                initializeDashboard();
+                setupEventListeners();
+                setupFileHandlers();
+                initializeCharts();
+            });
+
+            function initializeDashboard() {
+                // Hide all dashboards
+                document.querySelectorAll('.dashboard').forEach(dash => {
+                    dash.style.display = 'none';
                 });
-                
-                const result = await response.json();
-                if (result.error) throw new Error(result.error);
-                
-                // Update UI with results
-                updateCharts(department, result);
-                updateMetrics(department, result.metrics);
-                
-                // Update download button if available
-                if (result.download_url) {
-                    const downloadBtn = document.getElementById(department.toLowerCase() + 'Download');
-                    if (downloadBtn) {
-                        downloadBtn.href = result.download_url;
-                        downloadBtn.style.display = 'block';
+
+                // Switch to BED department
+                switchDepartment('BED');
+            }
+
+            function setupEventListeners() {
+                document.querySelectorAll('.department-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const department = this.dataset.department;
+                        switchDepartment(department);
+                    });
+                });
+            }
+
+            function setupFileHandlers() {
+                const { dropZone, fileInput } = appState.ui;
+                if (!dropZone || !fileInput) return;
+
+                // File input click handler
+                dropZone.addEventListener('click', () => fileInput.click());
+
+                // Drag and drop handlers
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-success');
+                });
+
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('border-success');
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-success');
+                    const file = e.dataTransfer.files[0];
+                    if (file) handleFile(file);
+                });
+
+                // File input change handler
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) handleFile(file);
+                });
+            }
+
+            async function predict(department) {
+                const { ui } = appState;
+                const { loader } = ui;
+
+                if (loader) loader.style.display = 'flex';
+
+                try {
+                    const deptLower = department.toLowerCase();
+                    const courseSelect = ui[deptLower + 'Course'];
+                    const yearSelect = ui[deptLower + 'Year'];
+                    const semesterSelect = ui[deptLower + 'Semester'];
+
+                    if (!courseSelect || !yearSelect || !semesterSelect) {
+                        throw new Error('Required form elements not found');
                     }
+
+                    // Prepare request data
+                    const data = {
+                        department,
+                        course: courseSelect.value,
+                        year: yearSelect.value,
+                        semester: parseInt(semesterSelect.value)
+                    };
+
+                    // Make prediction request
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+                    if (result.error) throw new Error(result.error);
+
+                    // Update UI with results
+                    updateCharts(department, result);
+                    updateMetrics(department, result.metrics);
+
+                    // Update download button if available
+                    if (result.download_url) {
+                        const downloadBtn = document.getElementById(deptLower + 'Download');
+                        if (downloadBtn) {
+                            downloadBtn.href = result.download_url;
+                            downloadBtn.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Prediction error:', error);
+                    alert('Error generating forecast: ' + error.message);
+                } finally {
+                    if (loader) loader.style.display = 'none';
                 }
-            } catch (error) {
-                console.error('Prediction error:', error);
-                alert('Error generating forecast: ' + error.message);
-            } finally {
-                if (loader) loader.style.display = 'none';
             }
-        }
-        
-        function switchDepartment(department) {
-            // Update active state of buttons
-            document.querySelectorAll('.department-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.department === department) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            // Hide all dashboards
-            document.querySelectorAll('.dashboard').forEach(dash => {
-                dash.style.display = 'none';
-            });
-            
-            // Show selected dashboard
-            const dashboardId = department.toLowerCase() + 'Dashboard';
-            document.getElementById(dashboardId).style.display = 'block';
-            
-            // Update current department
-            currentDepartment = department;
-            
-            // Update filters based on department
-            fetch('/get_filters')
-                .then(response => response.json())
-                .then(data => {
-                    const courses = data.courses[department] || [];
-                    const courseSelect = document.getElementById(department.toLowerCase() + 'Course');
-                    courseSelect.innerHTML = courses.map(course => 
-                        `<option value="${course}">${course}</option>`
-                    ).join('');
-                    
-                    const yearSelect = document.getElementById(department.toLowerCase() + 'Year');
-                    yearSelect.innerHTML = data.years.map(year => 
-                        `<option value="${year}">${year}</option>`
-                    ).join('');
-                })
-                .catch(error => {
-                    console.error('Error fetching filters:', error);
-                });
-            }
-            
+
             function switchDepartment(department) {
                 // Update active state of buttons
                 document.querySelectorAll('.department-btn').forEach(btn => {
@@ -489,19 +443,19 @@
                         btn.classList.add('active');
                     }
                 });
-                
+
                 // Hide all dashboards
                 document.querySelectorAll('.dashboard').forEach(dash => {
                     dash.style.display = 'none';
                 });
-                
+
                 // Show selected dashboard
                 const dashboardId = department.toLowerCase() + 'Dashboard';
                 document.getElementById(dashboardId).style.display = 'block';
-                
+
                 // Update current department
                 currentDepartment = department;
-                
+
                 // Update filters based on department
                 fetch('/get_filters')
                     .then(response => response.json())
@@ -511,7 +465,7 @@
                         courseSelect.innerHTML = courses.map(course => 
                             `<option value="${course}">${course}</option>`
                         ).join('');
-                        
+
                         const yearSelect = document.getElementById(department.toLowerCase() + 'Year');
                         yearSelect.innerHTML = data.years.map(year => 
                             `<option value="${year}">${year}</option>`
@@ -520,441 +474,232 @@
                     .catch(error => {
                         console.error('Error fetching filters:', error);
                     });
-                updateFilters(department);
             }
-            
+
             async function updateFilters(department) {
                 try {
                     const response = await fetch('/get_filters');
-                    const filters = await response.json();
-                    
-                    // Get the relevant course select element
+                    const data = await response.json();
+
+                    const courses = data.courses[department] || [];
+                    const years = data.years || [];
+
+                    // Get department elements
                     const courseSelect = document.getElementById(department.toLowerCase() + 'Course');
-                    const yearLevelSelect = document.getElementById(department.toLowerCase() + 'YearLevel');
-                    
-                    // Clear existing options
-                    courseSelect.innerHTML = '';
-                    yearLevelSelect.innerHTML = '';
-                    
-                    // Add courses for the selected department
-                    filters.courses[department].forEach(course => {
-                        const option = new Option(course, course);
-                        courseSelect.add(option);
-                    });
-                    
-                    // Add year levels
-                    filters.year_levels.forEach(year => {
-                        const option = new Option('Year ' + year, year);
-                        yearLevelSelect.add(option);
-                    });
-                    
-                    // Initialize Select2
-                    $(courseSelect).select2({
-                        theme: 'bootstrap4',
-                        placeholder: 'Select Course'
-                    });
-                    
-                    $(yearLevelSelect).select2({
-                        theme: 'bootstrap4',
-                        placeholder: 'Select Year Level'
-                    });
+                    const yearSelect = document.getElementById(department.toLowerCase() + 'Year');
+
+                    if (courseSelect) {
+                        courseSelect.innerHTML = courses
+                            .map(course => `<option value="${course}">${course}</option>`)
+                            .join('');
+
+                        // Initialize Select2 for course
+                        $(courseSelect).select2({
+                            theme: 'bootstrap4',
+                            placeholder: 'Select Course'
+                        });
+                    }
+
+                    if (yearSelect) {
+                        yearSelect.innerHTML = years
+                            .map(year => `<option value="${year}">${year}</option>`)
+                            .join('');
+
+                        // Initialize Select2 for year
+                        $(yearSelect).select2({
+                            theme: 'bootstrap4',
+                            placeholder: 'Select Year Level'
+                        });
+                    }
                 } catch (error) {
                     console.error('Error fetching filters:', error);
                 }
             }
-            
-            // File upload handling
-            const uploadArea = document.getElementById('uploadArea');
-            const fileInput = document.getElementById('fileInput');
+
+            // Loading overlay reference
             const loadingOverlay = document.getElementById('loadingOverlay');
 
-            uploadArea.addEventListener('click', () => fileInput.click());
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.classList.add('border-success');
-            });
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.classList.remove('border-success');
-            });
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.classList.remove('border-success');
-                const file = e.dataTransfer.files[0];
-                if (file) handleFile(file);
-            });
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) handleFile(file);
-            });
-
             function showLoading() {
-                loadingOverlay.style.display = 'flex';
+                if (loadingOverlay) loadingOverlay.style.display = 'flex';
             }
 
             function hideLoading() {
-                loadingOverlay.style.display = 'none';
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             }
 
-        // File handling functions
-        function handleDragOver(e) {
-            e.preventDefault();
-            uploadArea.classList.add('border-success');
-        }
+            function handleFile(file) {
+                showLoading();
+                const formData = new FormData();
+                formData.append('file', file);
 
-        function handleDragLeave() {
-            uploadArea.classList.remove('border-success');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            uploadArea.classList.remove('border-success');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        }
-
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
-        }
-
-        function handleFile(file) {
-            const { loader } = appState.ui;
-            if (loader) loader.style.display = 'flex';
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                
-                updateCharts(appState.department, data);
-                updateMetrics(appState.department, data.metrics);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error uploading file: ' + error.message);
-            })
-            .finally(() => {
-                if (loader) loader.style.display = 'none';
-            });
-        }
-
-        function updateMetrics(department, metrics) {
-            if (!metrics) return;
-            
-            // Update accuracy metrics
-            document.getElementById(department.toLowerCase() + 'Mse').textContent = metrics.mse.toFixed(2);
-            document.getElementById(department.toLowerCase() + 'Rmse').textContent = metrics.rmse.toFixed(2);
-            document.getElementById(department.toLowerCase() + 'Mape').textContent = metrics.mape.toFixed(2);
-            
-            // Update trend metrics
-            document.getElementById(department.toLowerCase() + 'Growth').textContent = metrics.growth_rate.toFixed(2) + '%';
-            document.getElementById(department.toLowerCase() + 'Trend').textContent = metrics.trend;
-            document.getElementById(department.toLowerCase() + 'Seasonality').textContent = metrics.seasonality;
-        }
-        
-        function switchDepartment(department) {
-            // Update active state of buttons
-            document.querySelectorAll('.department-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.department === department) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            // Hide all dashboards
-            document.querySelectorAll('.dashboard').forEach(dash => {
-                dash.style.display = 'none';
-            });
-            
-            // Show selected dashboard
-            const dashboardId = department.toLowerCase() + 'Dashboard';
-            document.getElementById(dashboardId).style.display = 'block';
-            
-            // Update current department
-            currentDepartment = department;
-            
-            // Update filters based on department
-            fetch('/get_filters')
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
                 .then(response => response.json())
                 .then(data => {
-                    const courses = data.courses[department] || [];
-                    const courseSelect = document.getElementById(department.toLowerCase() + 'Course');
-                    courseSelect.innerHTML = courses.map(course => 
-                        `<option value="${course}">${course}</option>`
-                    ).join('');
-                    
-                    const yearSelect = document.getElementById(department.toLowerCase() + 'Year');
-                    yearSelect.innerHTML = data.years.map(year => 
-                        `<option value="${year}">${year}</option>`
-                    ).join('');
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    appState.data = data;
+                    updateCharts(appState.department, data);
+                    updateMetrics(appState.department, data.metrics);
+                    const resultSection = document.getElementById('resultSection');
+                    if (resultSection) {
+                        resultSection.classList.remove('d-none');
+                        resultSection.classList.add('animate__animated', 'animate__fadeIn');
+                    }
                 })
                 .catch(error => {
-                    console.error('Error fetching filters:', error);
+                    console.error('Error:', error);
+                    alert('An error occurred while processing the file: ' + error.message);
+                })
+                .finally(() => {
+                    hideLoading();
                 });
-            updateFilters(department);
-        }
-        
-        async function updateFilters(department) {
-            try {
-                const response = await fetch('/get_filters');
-                const filters = await response.json();
-                
-                // Get the relevant course select element
-                const courseSelect = document.getElementById(department.toLowerCase() + 'Course');
-                const yearLevelSelect = document.getElementById(department.toLowerCase() + 'YearLevel');
-                
-                // Clear existing options
-                courseSelect.innerHTML = '';
-                yearLevelSelect.innerHTML = '';
-                
-                // Add courses for the selected department
-                filters.courses[department].forEach(course => {
-                    const option = new Option(course, course);
-                    courseSelect.add(option);
-                });
-                
-                // Add year levels
-                filters.year_levels.forEach(year => {
-                    const option = new Option('Year ' + year, year);
-                    yearLevelSelect.add(option);
-                });
-                
-                // Initialize Select2
-                $(courseSelect).select2({
-                    theme: 'bootstrap4',
-                    placeholder: 'Select Course'
-                });
-                
-                $(yearLevelSelect).select2({
-                    theme: 'bootstrap4',
-                    placeholder: 'Select Year Level'
-                });
-            } catch (error) {
-                console.error('Error fetching filters:', error);
             }
-        }
-        
-        // File upload handling
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const loadingOverlay = document.getElementById('loadingOverlay');
 
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('border-success');
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('border-success');
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('border-success');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
-        });
+            function initializeCharts() {
+                const defaultLayout = {
+                    showlegend: true,
+                    template: 'plotly_white',
+                    margin: { t: 50, r: 20, b: 50, l: 50 }
+                };
 
-        function showLoading() {
-            loadingOverlay.style.display = 'flex';
-        }
+                // Initialize charts in appState
+                const charts = {
+                    lineChart: Plotly.newPlot('lineChart', [], {
+                        ...defaultLayout,
+                        title: 'Enrollment Trends',
+                        xaxis: { title: 'Semester' },
+                        yaxis: { title: 'Number of Students' }
+                    }),
+                    
+                    barChart: Plotly.newPlot('barChart', [], {
+                        ...defaultLayout,
+                        title: 'Course Distribution',
+                        xaxis: { title: 'Course' },
+                        yaxis: { title: 'Number of Students' }
+                    }),
+                    
+                    comparisonChart: Plotly.newPlot('comparisonChart', [], {
+                        ...defaultLayout,
+                        title: 'Actual vs Forecast',
+                        xaxis: { title: 'Semester' },
+                        yaxis: { title: 'Number of Students' }
+                    })
+                };
 
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
+                // Store charts in appState
+                appState.charts = charts;
+            }
 
-        function handleFile(file) {
-            showLoading();
-            const formData = new FormData();
-            formData.append('file', file);
+            function updateCharts(department, data) {
+                const prefix = department.toLowerCase();
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    currentData = data;
-                    updateCharts(data);
-                    updateMetrics(data);
-                    document.getElementById('resultSection').classList.remove('d-none');
-                    document.getElementById('resultSection').classList.add('animate__animated', 'animate__fadeIn');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while processing the file.');
-            })
-            .finally(() => {
-                hideLoading();
-            });
-        }
+                // Update line chart
+                const lineTrace = {
+                    x: data.historical.dates,
+                    y: data.historical.values,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Historical',
+                    line: {
+                        color: department === 'BED' ? '#e74a3b' : '#1cc88a'
+                    }
+                };
 
-        // Initialize charts
-        let lineChart, barChart, heatMap, comparisonChart;
+                const lineLayout = {
+                    title: 'Historical Enrollment',
+                    xaxis: { title: 'Year-Semester' },
+                    yaxis: { title: 'Number of Enrollees' },
+                    showlegend: true,
+                    legend: { x: 0, y: 1.2 }
+                };
 
-        function initializeCharts() {
-            const courses = ['BSBA-FM', 'BSBA-MM', 'BSIT', 'BSCS'];
-            const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
-            
-            // Initialize Plotly charts
-            charts.lineChart = Plotly.newPlot('lineChart', [], {
-                title: 'Enrollment Trends',
-                xaxis: { title: 'Semester' },
-                yaxis: { title: 'Number of Students' },
-                showlegend: true,
-                template: 'plotly_white'
-            });
-            
-            charts.barChart = Plotly.newPlot('barChart', [], {
-                title: 'Course Distribution',
-                xaxis: { title: 'Course' },
-                yaxis: { title: 'Number of Students' },
-                showlegend: true,
-                template: 'plotly_white'
-            });
-            
-            charts.heatMap = Plotly.newPlot('heatMap', [], {
-                title: 'Enrollment Heatmap',
-                xaxis: { title: 'Semester' },
-                yaxis: { title: 'Course' },
-                template: 'plotly_white'
-            });
-            
-            charts.comparisonChart = Plotly.newPlot('comparisonChart', [], {
-                title: 'Actual vs Forecast',
-                xaxis: { title: 'Semester' },
-                yaxis: { title: 'Number of Students' },
-                showlegend: true,
-                template: 'plotly_white'
-            });
-        }
+                Plotly.newPlot(prefix + 'LineChart', [lineTrace], lineLayout);
 
-        function updateCharts(department, data) {
-            const prefix = department.toLowerCase();
-            
-            // Update line chart
-            const lineTrace = {
-                x: data.historical.dates,
-                y: data.historical.values,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Historical',
-                line: {
-                    color: department === 'BED' ? '#e74a3b' : '#1cc88a'
-                }
-            };
-            
-            const lineLayout = {
-                title: 'Historical Enrollment',
-                xaxis: { title: 'Year-Semester' },
-                yaxis: { title: 'Number of Enrollees' },
-                showlegend: true,
-                legend: { x: 0, y: 1.2 }
-            };
-            
-            Plotly.newPlot(prefix + 'LineChart', [lineTrace], lineLayout);
-            
-            // Update bar chart
-            const barTrace = {
-                x: data.historical.dates.slice(-5),
-                y: data.historical.values.slice(-5),
-                type: 'bar',
-                marker: {
-                    color: department === 'BED' ? '#e74a3b' : '#1cc88a'
-                }
-            };
-            
-            const barLayout = {
-                title: 'Recent Enrollment',
-                xaxis: { title: 'Year-Semester' },
-                yaxis: { title: 'Number of Enrollees' }
-            };
-            
-            Plotly.newPlot(prefix + 'BarChart', [barTrace], barLayout);
-            
-            // Update comparison chart
-            const actualTrace = {
-                x: data.historical.dates,
-                y: data.historical.values,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Actual',
-                line: {
-                    color: department === 'BED' ? '#e74a3b' : '#1cc88a'
-                }
-            };
-            
-            const forecastTrace = {
-                x: Object.keys(data.predictions),
-                y: Object.values(data.predictions),
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Forecast',
-                line: {
-                    color: '#4e73df',
-                    dash: 'dot'
-                }
-            };
-            
-            const comparisonLayout = {
-                title: 'Actual vs Forecast',
-                xaxis: { title: 'Year-Semester' },
-                yaxis: { title: 'Number of Enrollees' },
-                showlegend: true
-            };
-            
-            Plotly.newPlot(prefix + 'ComparisonChart', [actualTrace, forecastTrace], comparisonLayout);
-        }
-        
-        function updateMetrics(department, metrics) {
-            const metricsDiv = document.getElementById(department.toLowerCase() + 'Metrics');
-            metricsDiv.innerHTML = `
-                <div class="col-md-4">
-                    <div class="metrics-badge">
-                        <i class='bx bx-error'></i>
-                        MSE: ${metrics.mse.toFixed(2)}
+                // Update bar chart
+                const barTrace = {
+                    x: data.historical.dates.slice(-5),
+                    y: data.historical.values.slice(-5),
+                    type: 'bar',
+                    marker: {
+                        color: department === 'BED' ? '#e74a3b' : '#1cc88a'
+                    }
+                };
+
+                const barLayout = {
+                    title: 'Recent Enrollment',
+                    xaxis: { title: 'Year-Semester' },
+                    yaxis: { title: 'Number of Enrollees' }
+                };
+
+                Plotly.newPlot(prefix + 'BarChart', [barTrace], barLayout);
+
+                // Update comparison chart
+                const actualTrace = {
+                    x: data.historical.dates,
+                    y: data.historical.values,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Actual',
+                    line: {
+                        color: department === 'BED' ? '#e74a3b' : '#1cc88a'
+                    }
+                };
+
+                const forecastTrace = {
+                    x: Object.keys(data.predictions),
+                    y: Object.values(data.predictions),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Forecast',
+                    line: {
+                        color: '#4e73df',
+                        dash: 'dot'
+                    }
+                };
+
+                const comparisonLayout = {
+                    title: 'Actual vs Forecast',
+                    xaxis: { title: 'Year-Semester' },
+                    yaxis: { title: 'Number of Enrollees' },
+                    showlegend: true
+                };
+
+                Plotly.newPlot(prefix + 'ComparisonChart', [actualTrace, forecastTrace], comparisonLayout);
+            }
+
+            function updateMetrics(department, metrics) {
+                const metricsDiv = document.getElementById(department.toLowerCase() + 'Metrics');
+                metricsDiv.innerHTML = `
+                    <div class="col-md-4">
+                        <div class="metrics-badge">
+                            <i class='bx bx-error'></i>
+                            MSE: ${metrics.mse.toFixed(2)}
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="metrics-badge">
-                        <i class='bx bx-error-circle'></i>
-                        RMSE: ${metrics.rmse.toFixed(2)}
+                    <div class="col-md-4">
+                        <div class="metrics-badge">
+                            <i class='bx bx-error-circle'></i>
+                            RMSE: ${metrics.rmse.toFixed(2)}
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="metrics-badge">
-                        <i class='bx bx-error-alt'></i>
-                        MAPE: ${metrics.mape.toFixed(2)}%
+                    <div class="col-md-4">
+                        <div class="metrics-badge">
+                            <i class='bx bx-error-alt'></i>
+                            MAPE: ${metrics.mape.toFixed(2)}%
+                        </div>
                     </div>
-                </div>
-            `;
-        }
+                `;
+            }
 
-        function getColor(index, isDashed = false) {
-            const colors = [
-                'rgb(75, 192, 192)',
-                'rgb(255, 99, 132)',
-                'rgb(255, 205, 86)',
-                'rgb(54, 162, 235)'
-            ];
-            return isDashed ? colors[index] + '80' : colors[index];
-        }
-
-        // Initialize charts on page load
-        document.addEventListener('DOMContentLoaded', initializeCharts);
-    </script>
-</body>
+            function getColor(index, isDashed = false) {
+                const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
+                return isDashed ? colors[index] + '80' : colors[index];
+            }
+        })();
+        </script>
+    </body>
 </html>
