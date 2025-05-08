@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request, jsonify, send_file, url_for
+from flask import Flask, render_template, request, jsonify, send_file, url_for, session
+import matplotlib
+matplotlib.use('Agg')  # Use Agg backend for non-interactive mode
+import matplotlib.pyplot as plt
 from werkzeug.utils import secure_filename
 import os
 import pandas as pd
@@ -15,6 +18,7 @@ app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 app.config['MODEL_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['SESSION_TYPE'] = 'filesystem'  # Enable server-side session
 
 # Create folders if they don't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -335,23 +339,107 @@ def predict():
             'rmse': abs(total_pred - total_actual),
             'mape': abs((total_pred - total_actual) / total_actual) * 100 if total_actual != 0 else 0
         }
+
+        # Prepare response data
+        response_data = {
+            'dates': results['historical']['dates'],
+            'values': results['historical']['values'],
+            'courses': list(DEPARTMENTS[department.upper()]),
+            'course_enrollments': [sum(results['historical']['by_year_level'][yl][-1] for yl in YEAR_LEVELS)],
+            'actual_dates': results['historical']['dates'][-4:],
+            'actual_values': results['historical']['values'][-4:],
+            'forecast_dates': [f'{year}-{semester}'],
+            'forecast_values': [total_pred],
+            'metrics': results['metrics']
+        }
+
+        # Store in session for download feature
+        dept = department.lower()
+        session[f'{dept}_line_chart'] = json.dumps({
+            'dates': response_data['dates'],
+            'values': response_data['values']
+        })
+
+        session[f'{dept}_bar_chart'] = json.dumps({
+            'courses': response_data['courses'],
+            'values': response_data['course_enrollments']
+        })
+
+        session[f'{dept}_comparison_chart'] = json.dumps({
+            'actual_dates': results['historical']['dates'][-4:],
+            'actual_values': results['historical']['values'][-4:],
+            'forecast_dates': [f'{year}-{semester}'],
+            'forecast_values': [total_pred]
+        })
+
+        # Bar chart data
+        session[f'{dept}_bar_chart'] = {
+            'courses': list(DEPARTMENTS[department]),
+            'values': [sum(results['historical']['by_year_level'][yl][-1] for yl in YEAR_LEVELS)]
+        }
+
+        # Comparison chart data
+        session[f'{dept}_comparison_chart'] = {
+            'actual_dates': results['historical']['dates'][-4:],
+            'actual_values': results['historical']['values'][-4:],
+            'forecast_dates': [f'{year}-{semester}' for _ in range(4)],
+            'forecast_values': [total_pred] * 4
+        }
         
         return jsonify(results)
     except Exception as e:
         return jsonify({'error': str(e)})
 
-@app.route('/download_predictions')
-def download_predictions():
+@app.route('/download_chart/<department>/<chart_type>')
+def download_chart(department, chart_type):
     try:
-        csv_path = os.path.join(app.config['UPLOAD_FOLDER'], 'predictions.csv')
+        # Get chart data from session and deserialize JSON
+        chart_data_json = session.get(f'{department}_{chart_type}_chart')
+        if not chart_data_json:
+            return jsonify({'error': 'No chart data available'}), 404
+
+        # Create a temporary file
+        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{department}_{chart_type}_chart.png')
+
+        # Convert chart data to PNG
+        plt.figure(figsize=(12, 6))
+        if chart_type == 'line':
+            plt.plot(chart_data_json['dates'], chart_data_json['values'], marker='o')
+            plt.title(f'{department} Enrollment Trend')
+            plt.xlabel('Year-Semester')
+            plt.ylabel('Number of Students')
+        elif chart_type == 'bar':
+            plt.bar(chart_data_json['courses'], chart_data_json['values'])
+            plt.title(f'{department} Course Distribution')
+            plt.xlabel('Course')
+            plt.ylabel('Number of Students')
+        elif chart_type == 'comparison':
+            plt.plot(chart_data_json['actual_dates'], chart_data_json['actual_values'], marker='o', label='Actual')
+            plt.plot(chart_data_json['forecast_dates'], chart_data_json['forecast_values'], marker='o', linestyle='--', label='Forecast')
+            plt.title(f'{department} Actual vs Forecast')
+            plt.xlabel('Year-Semester')
+            plt.ylabel('Number of Students')
+            plt.legend()
+
+        plt.tight_layout()
+        plt.savefig(temp_file, dpi=300, bbox_inches='tight', format='png')
+        plt.close()
+
         return send_file(
-            csv_path,
-            mimetype='text/csv',
+            temp_file,
+            mimetype='image/png',
             as_attachment=True,
-            download_name='enrollment_predictions.csv'
+            download_name=f'{department}_{chart_type}_chart.png'
         )
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary file
+        if 'temp_file' in locals() and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
