@@ -236,6 +236,43 @@
 
         <!-- BED Dashboard -->
         <div id="bedDashboard" class="dashboard">
+            <!-- Charts Section -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Enrollment Trends</h5>
+                            <div id="bedTrendChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('BED', 'trend')">Download Chart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Course Distribution</h5>
+                            <div id="bedBarChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('BED', 'bar')">Download Chart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Chart -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Actual vs Forecast</h5>
+                            <div id="bedComparisonChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('BED', 'comparison')">Download Chart</button>
+                            <div id="bedMetrics" class="d-flex flex-wrap justify-content-center mt-3 d-none"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card dashboard-card">
@@ -333,6 +370,41 @@
         </div>
         <!-- CED Dashboard -->
         <div id="cedDashboard" class="dashboard">
+            <!-- Charts Section -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Enrollment Trends</h5>
+                            <div id="cedTrendChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('CED', 'trend')">Download Chart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Course Distribution</h5>
+                            <div id="cedBarChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('CED', 'bar')">Download Chart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Chart -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">Actual vs Forecast</h5>
+                            <div id="cedComparisonChart" class="chart-container"></div>
+                            <button class="btn btn-download mt-2" onclick="downloadChart('CED', 'comparison')">Download Chart</button>
+                            <div id="cedMetrics" class="d-flex flex-wrap justify-content-center mt-3 d-none"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card dashboard-card">
@@ -434,6 +506,81 @@
         
         <script>
         (function() {
+            // Function to update charts
+            function updateCharts(data, department) {
+                const deptColor = department === 'BED' ? '#e74a3b' : '#1cc88a';
+                
+                // Trend Chart
+                const trendData = [{
+                    x: data.dates,
+                    y: data.enrollments,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Enrollment',
+                    line: { color: deptColor }
+                }];
+
+                const layout = {
+                    template: 'plotly_white',
+                    showlegend: true,
+                    height: 400,
+                    margin: { t: 30, b: 40, l: 60, r: 40 }
+                };
+
+                Plotly.newPlot(`${department.toLowerCase()}TrendChart`, trendData, {
+                    ...layout,
+                    title: 'Enrollment Trends',
+                    xaxis: { title: 'Year-Semester' },
+                    yaxis: { title: 'Number of Students' }
+                }).catch(err => console.error('Trend chart error:', err));
+
+                // Bar Chart
+                const barData = [{
+                    x: Object.keys(data.course_data),
+                    y: Object.values(data.course_data),
+                    type: 'bar',
+                    marker: { color: deptColor }
+                }];
+
+                Plotly.newPlot(`${department.toLowerCase()}BarChart`, barData, {
+                    ...layout,
+                    title: 'Course Distribution',
+                    xaxis: { title: 'Course' },
+                    yaxis: { title: 'Number of Students' }
+                }).catch(err => console.error('Bar chart error:', err));
+
+                // Comparison Chart
+                const comparisonData = [
+                    {
+                        x: data.dates.slice(-4),
+                        y: data.enrollments.slice(-4),
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Actual',
+                        line: { color: deptColor }
+                    },
+                    {
+                        x: data.forecast_dates,
+                        y: data.forecast_values,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Forecast',
+                        line: { color: deptColor, dash: 'dash' }
+                    }
+                ];
+
+                Plotly.newPlot(`${department.toLowerCase()}ComparisonChart`, comparisonData, {
+                    ...layout,
+                    title: 'Actual vs Forecast',
+                    xaxis: { title: 'Year-Semester' },
+                    yaxis: { title: 'Number of Students' }
+                }).catch(err => console.error('Comparison chart error:', err));
+
+                // Update metrics if available
+                if (data.metrics) {
+                    updateMetrics(department, data.metrics);
+                }
+            }
             // Application state management
             const appState = {
                 charts: {},
@@ -723,6 +870,97 @@
                 })
                 .finally(() => {
                     hideLoading();
+                });
+            }
+
+            function handleFileUpload(event) {
+                event.preventDefault();
+                const fileInput = document.getElementById('csvFile');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    alert('Please select a file first!');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Show loading overlay
+                document.getElementById('loadingOverlay').style.display = 'flex';
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    // Process the response data
+                    console.log('Upload successful:', data);
+                    
+                    // Group courses by department
+                    const bedData = {};
+                    const cedData = {};
+                    
+                    Object.entries(data).forEach(([course, courseData]) => {
+                        if (course.startsWith('BSBA')) {
+                            bedData[course] = courseData;
+                        } else {
+                            cedData[course] = courseData;
+                        }
+                    });
+                    
+                    // Update BED charts
+                    if (Object.keys(bedData).length > 0) {
+                        const firstCourse = Object.keys(bedData)[0];
+                        const courseData = bedData[firstCourse];
+                        
+                        updateCharts({
+                            dates: courseData.historical.dates,
+                            enrollments: courseData.historical.values,
+                            forecast_dates: courseData.predictions.dates,
+                            forecast_values: courseData.predictions.values,
+                            metrics: courseData.metrics,
+                            course_data: Object.fromEntries(
+                                Object.entries(bedData).map(([course, data]) => [
+                                    course,
+                                    data.historical.values[data.historical.values.length - 1]
+                                ])
+                            )
+                        }, 'BED');
+                    }
+                    
+                    // Update CED charts
+                    if (Object.keys(cedData).length > 0) {
+                        const firstCourse = Object.keys(cedData)[0];
+                        const courseData = cedData[firstCourse];
+                        
+                        updateCharts({
+                            dates: courseData.historical.dates,
+                            enrollments: courseData.historical.values,
+                            forecast_dates: courseData.predictions.dates,
+                            forecast_values: courseData.predictions.values,
+                            metrics: courseData.metrics,
+                            course_data: Object.fromEntries(
+                                Object.entries(cedData).map(([course, data]) => [
+                                    course,
+                                    data.historical.values[data.historical.values.length - 1]
+                                ])
+                            )
+                        }, 'CED');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error: ' + error.message);
+                })
+                .finally(() => {
+                    // Hide loading overlay
+                    document.getElementById('loadingOverlay').style.display = 'none';
                 });
             }
 
