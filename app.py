@@ -500,7 +500,83 @@ def download_chart(department, chart_type):
                 os.remove(temp_file)
             except:
                 pass
+# Add this new route for visualization charts
+@app.route('/visualization/<course>')
+def visualization(course):
+    try:
+        # Load historical data
+        enroll_file = os.path.join(app.config['UPLOAD_FOLDER'], "enrollees_dataset.csv")
+        actual_data = []
+        labels = []
+        
+        if os.path.exists(enroll_file):
+            enroll_df = pd.read_csv(enroll_file)
+            course_enroll = enroll_df[enroll_df['Course'] == course].copy()
+            
+            if not course_enroll.empty:
+                # Convert School_Year to dates
+                def year_to_date(row):
+                    year_start = int(row['School_Year'].split('-')[0])
+                    if row['Semester'] == '1st':
+                        return f"{year_start}-06-01"
+                    else:
+                        return f"{year_start}-12-01"
+                
+                course_enroll['ds'] = course_enroll.apply(year_to_date, axis=1)
+                course_enroll['ds'] = pd.to_datetime(course_enroll['ds'])
+                course_enroll = course_enroll.sort_values('ds')
+                
+                actual_data = course_enroll['total_enrollees'].tolist()
+                labels = course_enroll['ds'].dt.strftime('%Y-%m').tolist()
 
+        return render_template(
+            "visualization.html",
+            course=course,
+            labels=labels,
+            actual_data=actual_data
+        )
+
+    except Exception as e:
+        print(f"ERROR in visualization: {str(e)}")
+        flash(f"Error loading visualization: {str(e)}")
+        return redirect(url_for('index'))
+
+# Add this new function to handle visualization data
+@app.route('/get_visualization_data/<course>')
+def get_visualization_data(course):
+    try:
+        enroll_file = os.path.join(app.config['UPLOAD_FOLDER'], "enrollees_dataset.csv")
+        actual_data = []
+        labels = []
+        
+        if os.path.exists(enroll_file):
+            enroll_df = pd.read_csv(enroll_file)
+            course_enroll = enroll_df[enroll_df['Course'] == course].copy()
+            
+            if not course_enroll.empty:
+                # Convert School_Year to dates
+                def year_to_date(row):
+                    year_start = int(row['School_Year'].split('-')[0])
+                    if row['Semester'] == '1st':
+                        return f"{year_start}-06-01"
+                    else:
+                        return f"{year_start}-12-01"
+                
+                course_enroll['ds'] = course_enroll.apply(year_to_date, axis=1)
+                course_enroll['ds'] = pd.to_datetime(course_enroll['ds'])
+                course_enroll = course_enroll.sort_values('ds')
+                
+                actual_data = course_enroll['total_enrollees'].tolist()
+                labels = course_enroll['ds'].dt.strftime('%Y-%m').tolist()
+
+        return jsonify({
+            'labels': labels,
+            'actual_data': actual_data,
+            'course': course
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
