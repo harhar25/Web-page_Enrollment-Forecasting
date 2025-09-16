@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BED Enrollment Forecasting</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+      --secondary-gradient: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+      --light-bg: #f8f9fc;
+      --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--light-bg);
+      min-height: 100vh;
+      padding: 2rem 0;
+      position: relative;
+    }
+    
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 5% 10%, rgba(78, 115, 223, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 95% 10%, rgba(28, 200, 138, 0.05) 0%, transparent 20%);
+      z-index: -1;
+    }
+    
+    .dashboard-card {
+      border-radius: 16px;
+      box-shadow: var(--card-shadow);
+      transition: var(--transition);
+      background: white;
+      border: none;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    
+    .dashboard-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: var(--primary-gradient);
+    }
+    
+    .dashboard-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0.5rem 2.5rem rgba(58, 59, 69, 0.25);
+    }
+    
+    .card-title {
+      color: #4e73df;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      position: relative;
+      padding-bottom: 0.75rem;
+    }
+    
+    .card-title::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 60px;
+      height: 4px;
+      background: var(--primary-gradient);
+      border-radius: 2px;
+    }
+    
+    .filter-label {
+      font-weight: 600;
+      color: #5a5c69;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+    
+    .form-control {
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      border: 1px solid #d1d3e2;
+      transition: var(--transition);
+    }
+    
+    .form-control:focus {
+      border-color: #4e73df;
+      box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+    
+    .btn-primary {
+      background: var(--primary-gradient);
+      border: none;
+      border-radius: 8px;
+      padding: 0.875rem 1.5rem;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3a59c7 0%, #1a3bb8 100%);
+      transform: translateY(-2px);
+    }
+    
+    .predict-btn {
+      background: var(--secondary-gradient);
+      color: white;
+      padding: 0.875rem 2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: var(--transition);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .predict-btn:hover {
+      background: linear-gradient(135deg, #18b980 0%, #0f7350 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(28, 200, 138, 0.4);
+    }
+    
+    .btn-icon {
+      margin-left: 0.5rem;
+      transition: var(--transition);
+    }
+    
+    .predict-btn:hover .btn-icon {
+      transform: translateX(4px);
+    }
+    
+    .divider {
+      height: 2px;
+      background: linear-gradient(to right, transparent, #d1d3e2, transparent);
+      margin: 2rem 0;
+      border: none;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .alert-success {
+      border-radius: 10px;
+      border-left: 5px solid #1cc88a;
+      box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+    }
+    
+    .form-text {
+      color: #858796;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateX(100px);
+      transition: all 0.3s ease;
+    }
+    
+    .notification.success {
+      background-color: #1cc88a;
+    }
+    
+    .notification.error {
+      background-color: #e74a3b;
+    }
+    
+    .notification.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card dashboard-card animate__animated animate__fadeIn">
+          <div class="card-body p-4">
+            <h5 class="card-title">BED Enrollment Forecasting</h5>
+            
+            <!-- HISTORICAL FORECAST FORM -->
+            <form id="forecastForm" action="{{ url_for('forecast') }}" method="POST" onsubmit="return validateForecastForm()">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="filter-label">Course</label>
+                  <select name="course" id="courseSelect" class="form-control" required>
+                    <option value="">-- Select Course --</option>
+                    <option value="BSBA-FINANCIAL_MANAGEMENT">BSBA-Financial Management</option>
+                    <option value="BSBA-MARKETING_MANAGEMENT">BSBA-Marketing Management</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="filter-label">Year</label>
+                  <select name="year" id="yearSelect" class="form-control" required>
+                    <option value="">-- Select Year --</option>
+                    <option value="2018-2019">2018 - 2019</option>
+                    <option value="2019-2020">2019 - 2020</option>
+                    <option value="2020-2021">2020 - 2021</option>
+                    <option value="2021-2022">2021 - 2022</option>
+                    <option value="2022-2023">2022 - 2023</option>
+                    <option value="2023-2024">2023 - 2024</option>
+                    <option value="2024-2025">2024 - 2025</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="filter-label">Semester</label>
+                  <select name="semester" id="semesterSelect" class="form-control" required>
+                    <option value="">-- Select Semester --</option>
+                    <option value="1">1st Semester</option>
+                    <option value="2">2nd Semester</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary mt-3">
+                Generate Historical Forecast <i class='bx bx-line-chart btn-icon'></i>
+              </button>
+            </form>
+
+            <hr class="divider">
+
+            <!-- PREDICT ENROLLMENT SECTION -->
+            <div id="predictEnrollmentSection">
+              <h5 class="card-title">Predict Future Enrollment</h5>
+              
+              <!-- Initially hidden form -->
+              <div id="predictFormContainer" class="hidden animate__animated animate__fadeIn">
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="filter-label">Course</label>
+                    <select name="course" id="predictCourse" class="form-control" required>
+                      <option value="">-- Select Course --</option>
+                      <option value="BSBA-FINANCIAL_MANAGEMENT">BSBA-Financial Management</option>
+                      <option value="BSBA-MARKETING_MANAGEMENT">BSBA-Marketing Management</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="filter-label">Semester</label>
+                    <select name="semester" id="predictSemester" class="form-control" required>
+                      <option value="">-- Select Semester --</option>
+                      <option value="1">1st Semester</option>
+                      <option value="2">2nd Semester</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="filter-label">School Year</label>
+                    <input type="text" class="form-control" name="year" id="predictYear" 
+                           placeholder="e.g., 2026-2027" pattern="\d{4}-\d{4}" required>
+                    <div class="form-text">Format: YYYY-YYYY (e.g., 2026-2027)</div>
+                  </div>
+                </div>
+                <button type="button" class="btn predict-btn mt-3" onclick="predictEnrollment()">
+                  Predict Enrollment <i class='bx bx-trending-up btn-icon'></i>
+                </button>
+              </div>
+              
+              <!-- Show form button -->
+              <button id="showPredictFormBtn" type="button" class="btn predict-btn mt-3" onclick="showPredictForm()">
+                Predict Future Enrollment <i class='bx bx-chevron-right btn-icon'></i>
+              </button>
+            </div>
+
+            <!-- Result placeholder -->
+            <div id="predictionResult" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification System -->
+  <div id="notification" class="notification" style="display: none;"></div>
+
+  <!-- Add Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  // Notification function
+  function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+      notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, 300);
+    }, 3000);
+  }
+
+  // Show the prediction form
+  function showPredictForm() {
+    document.getElementById('predictFormContainer').classList.remove('hidden');
+    document.getElementById('predictFormContainer').classList.add('fade-in');
+    document.getElementById('showPredictFormBtn').classList.add('hidden');
+  }
+
+  // Form validation for historical forecast
+  function validateForecastForm() {
+    const course = document.getElementById('courseSelect').value;
+    const year = document.getElementById('yearSelect').value;
+    const semester = document.getElementById('semesterSelect').value;
+    
+    if (!course || !year || !semester) {
+      showNotification("Please complete all fields before generating forecast", "error");
+      return false;
+    }
+    return true;
+  }
+
+  // Predict future enrollment
+  async function predictEnrollment() {
+    const course = document.getElementById('predictCourse').value;
+    const semester = document.getElementById('predictSemester').value;
+    const year = document.getElementById('predictYear').value;
+
+    // Validate inputs
+    if (!course || !semester || !year) {
+      showNotification("Please fill in all fields", "error");
+      return;
+    }
+
+    // Validate year format
+    const yearRegex = /^\d{4}-\d{4}$/;
+    if (!yearRegex.test(year)) {
+      showNotification("Please enter a valid year format (e.g., 2026-2027)", "error");
+      return;
+    }
+
+    // Validate year is not more than 3 years in the future
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(year.split('-')[0]);
+    
+    if (targetYear > currentYear + 3) {
+      showNotification("The model can only predict 3 years ahead at least for now", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course, semester, year, department: "BED" })
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        showNotification("Error: " + data.error, "error");
+      } else {
+        // Display prediction result
+        document.getElementById('predictionResult').innerHTML = `
+          <div class="alert alert-success">
+            <h5>Prediction Result</h5>
+            <p><strong>Course:</strong> ${data.course}</p>
+            <p><strong>School Year:</strong> ${data.year} - Semester ${data.semester}</p>
+            <p><strong>Predicted Enrollment:</strong> ${data.predicted_enrollment}</p>
+            <p><strong>Confidence Interval:</strong> ${data.lower_bound} to ${data.upper_bound}</p>
+          </div>
+        `;
+        showNotification("Prediction completed successfully!");
+      }
+    } catch (error) {
+      showNotification("Error: " + error.message, "error");
+    }
+  }
+  </script>
+</body>
+</html>

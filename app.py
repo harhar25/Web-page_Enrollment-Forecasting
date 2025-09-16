@@ -1,32 +1,39 @@
-from flask import Flask, render_template, request, jsonify, send_file, url_for, session
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, flash
 import matplotlib
-matplotlib.use('Agg')  # Use Agg backend for non-interactive mode
+matplotlib.use('Agg')  # Non-GUI backend for server
 import matplotlib.pyplot as plt
-from werkzeug.utils import secure_filename
 import os
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
 import joblib
 import json
+from prophet.serialize import model_from_json
+import pickle
+from datetime import datetime
+import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 app.config['MODEL_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.config['SESSION_TYPE'] = 'filesystem'  # Enable server-side session
 
-# Create folders if they don't exist
+# Explicit course-to-model mapping
+MODEL_PATHS = {
+    "BSCS": os.path.join(app.config['MODEL_FOLDER'], "BSCS_prophet_model.pkl"),
+    "BSIT": os.path.join(app.config['MODEL_FOLDER'], "BSIT_prophet_model.pkl"),
+    "BSBA-FINANCIAL_MANAGEMENT": os.path.join(app.config['MODEL_FOLDER'], "BSBA-FINANCIAL_MANAGEMENT_prophet_model.pkl"),
+    "BSBA-MARKETING_MANAGEMENT": os.path.join(app.config['MODEL_FOLDER'], "BSBA-MARKETING_MANAGEMENT_prophet_model.pkl")
+}
+
+# Create folders if they don’t exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['MODEL_FOLDER'], exist_ok=True)
 
 # Department and course configurations
 DEPARTMENTS = {
-    'BED': ['BSBA-FM', 'BSBA-MM'],
+    'BED': ['BSBA-FINANCIAL_MANAGEMENT', 'BSBA-MARKETING_MANAGEMENT'],
     'CED': ['BSIT', 'BSCS']
 }
 
@@ -34,204 +41,265 @@ YEAR_LEVELS = [1, 2, 3, 4]
 YEARS = [str(year) for year in range(2020, 2026)]
 SEMESTERS = [1, 2]
 
-# Global variables for models and data
+# Dictionary to hold Prophet models
 models = {}
-scalers = {}
-data_store = {}
-model_histories = {}
 
-def prepare_data(data, course, year_level, seq_length=4):
-    """Prepare data for LSTM model training with missing value handling"""
-    # Filter data for specific course and year level
-    course_data = data[(data['Course'] == course) & (data['Year_Level'] == year_level)].copy()
-    course_data = course_data.sort_values('Year_Semester')
-    
-    # Get all possible year-semesters in the date range
-    start_date = course_data['Year_Semester'].min()
-    end_date = course_data['Year_Semester'].max()
-    start_year = int(start_date[:4])
-    end_year = int(end_date[:4])
-    
-    # Create a complete date range
-    all_dates = []
-    for year in range(start_year, end_year + 1):
-        all_dates.extend([f"{year}-1", f"{year}-2"])
-    
-    all_dates = [d for d in all_dates if start_date <= d <= end_date]
-    
-    # Create a complete DataFrame with all dates
-    complete_data = pd.DataFrame({
-        'Year_Semester': all_dates,
-        'Course': course,
-        'Year_Level': year_level
-    })
-    
-    # Merge with actual data
-    course_data = pd.merge(
-        complete_data,
-        course_data,
-        on=['Year_Semester', 'Course', 'Year_Level'],
-        how='left'
-    )
-    
-    # Calculate missing value percentage
-    missing_pct = course_data['Enrollees'].isnull().mean()
-    
-    # If 50% or more values are missing, raise an error
-    if missing_pct >= 0.5:
-        raise ValueError(f'Too many missing values for {course} year {year_level}. Missing: {missing_pct:.1%}')
-    
-    # Handle missing values with mean
-    if course_data['Enrollees'].isnull().any():
-        mean_value = course_data['Enrollees'].mean()
-        course_data['Enrollees'] = course_data['Enrollees'].fillna(mean_value)
-    
-    if len(course_data) < seq_length + 1:
-        raise ValueError(f'Not enough data points for {course} year {year_level}. Need at least {seq_length + 1} points.')
-    
-    # Scale the data
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(course_data['Enrollees'].values.reshape(-1, 1))
-    
-    # Create sequences for LSTM
-    X, y = [], []
-    for i in range(len(scaled_data) - seq_length):
-        X.append(scaled_data[i:(i + seq_length)])
-        y.append(scaled_data[i + seq_length])
-    
-    if not X or not y:
-        raise ValueError(f'Could not create sequences for {course} year {year_level}')
-    
-    X = np.array(X)
-    y = np.array(y)
-    
-    # Reshape for LSTM [samples, time steps, features]
-    X = X.reshape((X.shape[0], X.shape[1], 1))
-    
-    # For small datasets, use simple train-test split
-    if len(X) < 6:
-        split = max(1, len(X) // 2)  # Ensure at least 1 validation sample
-        X_train, X_val = X[:-split], X[-split:]
-        y_train, y_val = y[:-split], y[-split:]
-    else:
-        # Use TimeSeriesSplit for larger datasets
-        tscv = TimeSeriesSplit(n_splits=2)
-        train_idx, val_idx = next(tscv.split(X))
-        X_train, X_val = X[train_idx], X[val_idx]
-        y_train, y_val = y[train_idx], y[val_idx]
-    
-    return X_train, X_val, y_train, y_val, scaler
-
-def build_model():
-    """Build Random Forest model for time series forecasting"""
-    return RandomForestRegressor(
-        n_estimators=100,
-        max_depth=10,
-        random_state=42,
-        n_jobs=-1
-    )
-
-def predict_future(model, scaler, last_sequence, n_future=6):
-    """Generate future predictions using the trained model"""
-    predictions = []
-    current_sequence = last_sequence.copy()
-    
-    for _ in range(n_future):
-        # Reshape sequence for Random Forest
-        current_sequence_2d = current_sequence.reshape(1, -1)
-        
-        # Predict next value
-        next_pred = model.predict(current_sequence_2d)
-        
-        # Inverse transform the prediction
-        next_pred_original = scaler.inverse_transform(next_pred.reshape(1, -1))[0][0]
-        predictions.append(next_pred_original)
-        
-        # Update sequence
-        current_sequence = np.roll(current_sequence, -1)
-        current_sequence[-1] = next_pred
-    
-    return predictions
-
-def calculate_metrics(y_true, y_pred):
-    mse = mean_squared_error(y_true, y_pred)
-    rmse = np.sqrt(mse)
-    mape = mean_absolute_percentage_error(y_true, y_pred) * 100
-    
-    return {
-        'mse': float(mse),
-        'rmse': float(rmse),
-        'mape': float(mape)
-    }
-
-def train_model(data, course, year_level):
-    """Train Random Forest model for a specific course and year level"""
+# Load trained Prophet models from .pkl
+def load_models():
     try:
-        # Prepare data
-        X_train, X_val, y_train, y_val, scaler = prepare_data(data, course, year_level)
-        
-        # Reshape data for Random Forest (flatten the sequence)
-        X_train_2d = X_train.reshape(X_train.shape[0], -1)
-        X_val_2d = X_val.reshape(X_val.shape[0], -1)
-        
-        # Create and train model
-        model = build_model()
-        model.fit(X_train_2d, y_train)
-        
-        # Calculate validation score
-        val_score = model.score(X_val_2d, y_val)
-        
-        # Create a simple history object to maintain compatibility
-        history = {
-            'val_loss': [val_score]
-        }
-        
-        return model, scaler, history
-        
-    except ValueError as ve:
-        print(f'Validation error for {course} year {year_level}: {str(ve)}')
-        raise
+        for file in os.listdir(app.config['MODEL_FOLDER']):
+            if file.endswith("_prophet_model.pkl"):
+                course_name = file.replace("_prophet_model.pkl", "")
+                file_path = os.path.join(app.config['MODEL_FOLDER'], file)
+                with open(file_path, "rb") as f:
+                    models[course_name] = pickle.load(f)
+        print(f"✅ Loaded models: {list(models.keys())}")
     except Exception as e:
-        print(f'Error training model for {course} year {year_level}: {str(e)}')
-        raise
+        print(f"❌ Error loading models: {str(e)}")
 
-def load_and_train_initial_data():
-    """Load initial dataset and train models"""
+
+def convert_enrollment_to_prophet_format():
+    """Convert the enrollees_dataset.csv to Prophet-friendly format for each course"""
     try:
-        # Load initial dataset
-        df = pd.read_csv('sample_data.csv')
-        data_store['training_data'] = df
+        # Read the enrollment data
+        enroll_file = os.path.join(app.config['UPLOAD_FOLDER'], "enrollees_dataset.csv")
+        if not os.path.exists(enroll_file):
+            print("❌ enrollees_dataset.csv not found")
+            return
         
-        # Train models for each course and year level
-        for department, courses in DEPARTMENTS.items():
-            for course in courses:
-                for year_level in YEAR_LEVELS:
-                    model_key = f"{course}_year{year_level}"
-                    print(f'Training model for {model_key}...')
-                    model, scaler, history = train_model(df, course, year_level)
-                    models[model_key] = model
-                    scalers[model_key] = scaler
-                    model_histories[model_key] = history
-                    print(f'Finished training {model_key} model')
+        df = pd.read_csv(enroll_file)
+        print(f"✅ Read enrollment data with {len(df)} rows")
         
-        return True
+        # Convert School_Year to proper dates
+        def year_to_date(row):
+            year_start = int(row['School_Year'].split('-')[0])
+            if row['Semester'] == '1st':
+                return f"{year_start}-06-01"  # Start of first semester
+            else:
+                return f"{year_start}-12-01"  # Start of second semester
+        
+        df['ds'] = df.apply(year_to_date, axis=1)
+        df['ds'] = pd.to_datetime(df['ds'])
+        
+        # Group by course and create separate files
+        for course in df['Course'].unique():
+            course_data = df[df['Course'] == course].copy()
+            course_data = course_data.sort_values('ds')
+            
+            # Create Prophet format data (date, total enrollment)
+            prophet_data = course_data[['ds', 'total_enrollees']].copy()
+            prophet_data.columns = ['ds', 'y']
+            
+            # Save to course-specific file
+            output_file = os.path.join(app.config['UPLOAD_FOLDER'], f"{course}_history.csv")
+            prophet_data.to_csv(output_file, index=False)
+            print(f"✅ Created historical data for {course}: {len(prophet_data)} records")
+            
     except Exception as e:
-        print(f'Error training models: {str(e)}')
-        return False
+        print(f"❌ Error converting enrollment data: {str(e)}")
 
-@app.route('/')
+
+# Load models on startup
+# Load models
+models = {}
+for course_name, path in MODEL_PATHS.items():
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            models[course_name] = pickle.load(f)
+print(f"✅ Loaded models: {list(models.keys())}")
+
+convert_enrollment_to_prophet_format()
+
+@app.route("/")
 def index():
-    # Check if models are trained
-    if not models:
-        success = load_and_train_initial_data()
-        if not success:
-            return 'Error: Could not train initial models', 500
-    
-    return render_template('index.html', 
-                           departments=DEPARTMENTS,
-                           year_levels=YEAR_LEVELS)
+    return render_template("frontface.html")
 
-@app.route('/get_filters')
+@app.route("/forecast", methods=["POST"])
+def forecast():
+    try:
+        course = request.form.get("course")
+        year = request.form.get("year")
+        semester = request.form.get("semester")
+
+        print(f"DEBUG: Received course='{course}', year='{year}', semester='{semester}'")
+
+        # Validate all fields are provided
+        if not course or not year or not semester:
+            flash("Please complete all fields")
+            return redirect(url_for("bed_filter" if "BSBA" in course else "ced_filter"))
+
+        if course not in models:
+            flash("Invalid course selected")
+            return redirect(url_for("index"))
+
+        # Determine which department the course belongs to
+        if "BSBA" in course:
+            target_redirect = "bed_filter"
+        else:
+            target_redirect = "ced_filter"
+
+        if semester not in ["1", "2"]:
+            flash("Please select a valid semester")
+            return redirect(url_for(target_redirect))
+        
+        semester_text = "1st" if semester == "1" else "2nd"
+
+        model = models[course]
+        print(f"DEBUG: Model loaded successfully for {course}")
+
+        # Load historical data from enrollees_dataset.csv
+        enroll_file = os.path.join(app.config['UPLOAD_FOLDER'], "enrollees_dataset.csv")
+        actual_data = []
+        labels = []
+        
+        if os.path.exists(enroll_file):
+            print(f"DEBUG: Loading enrollment data from {enroll_file}")
+            enroll_df = pd.read_csv(enroll_file)
+            
+            # Filter for the selected course
+            course_enroll = enroll_df[enroll_df['Course'] == course].copy()
+            
+            if not course_enroll.empty:
+                # Convert School_Year to dates
+                def year_to_date(row):
+                    year_start = int(row['School_Year'].split('-')[0])
+                    if row['Semester'] == '1st':
+                        return f"{year_start}-06-01"
+                    else:
+                        return f"{year_start}-12-01"
+                
+                course_enroll['ds'] = course_enroll.apply(year_to_date, axis=1)
+                course_enroll['ds'] = pd.to_datetime(course_enroll['ds'])
+                course_enroll = course_enroll.sort_values('ds')
+                
+                actual_data = course_enroll['total_enrollees'].tolist()
+                labels = course_enroll['ds'].dt.strftime('%Y-%m').tolist()
+                print(f"DEBUG: Found {len(actual_data)} historical data points for {course}")
+            else:
+                print("DEBUG: No enrollment data found for this course")
+        else:
+            print("DEBUG: No enrollment data file found")
+
+        # Forecast next 6 semesters
+        print("DEBUG: Generating forecast...")
+        future = model.make_future_dataframe(periods=6, freq="6ME")
+        forecast = model.predict(future)
+        
+        # Get all forecast data including confidence intervals
+        forecast_labels = forecast['ds'].dt.strftime('%Y-%m').tolist()
+        forecast_data = forecast['yhat'].round(2).tolist()
+        forecast_lower = forecast['yhat_lower'].round(2).tolist()
+        forecast_upper = forecast['yhat_upper'].round(2).tolist()
+
+        # Combine historical + forecast for chart
+        combined_labels = labels + forecast_labels[len(labels):]
+        # Ensure we only add None for the exact difference
+        none_count = len(forecast_labels) - len(labels)
+        combined_actual = actual_data + [None] * none_count if none_count > 0 else actual_data
+        print(f"DEBUG: Combined labels length: {len(combined_labels)}, Combined actual length: {len(combined_actual)}")
+                
+        # For confidence intervals, we need to align with forecast data only
+        conf_lower = [None]*len(labels) + forecast_lower[len(labels):]
+        conf_upper = [None]*len(labels) + forecast_upper[len(labels):]
+
+        print(f"DEBUG: Success! Rendering result with {len(combined_labels)} data points")
+
+        return render_template(
+            "BED_result.html",
+            course=course,
+            year=year,
+            semester=semester_text,
+            labels=combined_labels,
+            forecast_data=forecast_data,
+            actual_data=combined_actual,
+            forecast_lower=conf_lower,    # Add this
+            forecast_upper=conf_upper     # Add this
+        )
+
+    except Exception as e:
+        print(f"ERROR in forecast: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f"Error: {str(e)}")
+        if course and "BSBA" in course:
+            return redirect(url_for("bed_filter"))
+        else:
+            return redirect(url_for("ced_filter"))
+        
+@app.route('/comparefilter')
+def comparefilter():
+    return render_template('comparefilter.html')
+
+@app.route('/compare_results', methods=['POST'])
+def compare_results():
+    department = request.form['department']
+    course1 = request.form['course1']
+    course2 = request.form['course2']
+    return f"Comparing {course1} vs {course2} in {department}"
+
+@app.route('/upload_dataset', methods=['POST'])
+def upload_dataset():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'})
+        
+        file = request.files['file']
+        course = request.form.get('course')
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        if file and file.filename.endswith('.csv'):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            
+            # Process the uploaded CSV and add to historical data
+            process_uploaded_dataset(filepath, course)
+            
+            return jsonify({'success': True, 'message': 'Dataset uploaded successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Only CSV files are allowed'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+def process_uploaded_dataset(filepath, course):
+    """Process uploaded CSV and add to historical data"""
+    try:
+        # Read the uploaded CSV
+        new_data = pd.read_csv(filepath)
+        
+        # Convert to Prophet format (adjust based on your CSV structure)
+        if 'ds' in new_data.columns and 'y' in new_data.columns:
+            # Already in Prophet format
+            prophet_data = new_data
+        else:
+            # Convert from your enrollment format
+            prophet_data = convert_enrollment_to_prophet_format(new_data, course)
+        
+        # Append to existing historical data
+        hist_file = os.path.join(app.config['UPLOAD_FOLDER'], f"{course}_history.csv")
+        if os.path.exists(hist_file):
+            existing_data = pd.read_csv(hist_file)
+            combined_data = pd.concat([existing_data, prophet_data]).drop_duplicates()
+            combined_data.to_csv(hist_file, index=False)
+        else:
+            prophet_data.to_csv(hist_file, index=False)
+            
+    except Exception as e:
+        print(f"Error processing uploaded dataset: {str(e)}")
+        raise
+
+@app.route("/bed_filter")
+def bed_filter():
+    return render_template("BEDfilter.html")
+
+@app.route("/ced_filter")
+def ced_filter():
+    return render_template("CEDfilter.html")
+
+@app.route('/get_filters') 
 def get_filters():
     try:
         filters = {
@@ -240,26 +308,10 @@ def get_filters():
             'years': YEARS,
             'semesters': SEMESTERS
         }
-        
         return jsonify(filters)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/filters')
-def api_filters():
-    df = data_store.get('training_data')
-    if df is None:
-        return jsonify({'error': 'No data available'}), 404
-    
-    years = sorted(df['Year_Semester'].str[:4].unique())
-    semesters = ['1', '2']
-    
-    return jsonify({
-        'years': years,
-        'semesters': semesters,
-        'departments': DEPARTMENTS,
-        'year_levels': YEAR_LEVELS
-    })
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -269,154 +321,163 @@ def predict():
         course = data.get('course')
         year = data.get('year')
         semester = data.get('semester')
-        
+
+        # Validate inputs
         if not all([department, course, year, semester]):
             return jsonify({'error': 'Missing required parameters'}), 400
+
+        # Year validation
+        current_year = datetime.now().year
+        target_year = int(year.split("-")[0])
+        if target_year > current_year + 3:
+            return jsonify({'error': 'The model can only predict 3 years ahead at least for now'}), 400
+
+        # Load model
+        if course not in models:
+            return jsonify({'error': f"No trained model found for {course}"}), 404
+        model = models[course]
+
+        # Map semester → approximate date
+        if semester == "1st":
+            target_date = pd.to_datetime(f"{target_year}-06-01")
+        else:
+            target_date = pd.to_datetime(f"{target_year}-12-01")
+
+        # Create future DataFrame for Prophet
+        future = pd.DataFrame({"ds": [target_date]})
+        forecast = model.predict(future)
+
+        # Extract forecast values
+        predicted = round(float(forecast.iloc[0]['yhat']), 2)
+        lower = round(float(forecast.iloc[0]['yhat_lower']), 2)
+        upper = round(float(forecast.iloc[0]['yhat_upper']), 2)
+
+        # Generate a unique ID for this prediction
+        prediction_id = str(uuid.uuid4())
         
-        # Load and prepare data
-        df = pd.read_csv('sample_data.csv')
-        
-        # Initialize results dictionary
-        results = {
-            'historical': {
-                'dates': [],
-                'values': [],
-                'by_year_level': {}
-            },
-            'predictions': {},
-            'metrics': {}
-        }
-        
-        # Process each year level
-        for year_level in YEAR_LEVELS:
-            # Prepare data for this year level
-            X_train, X_val, y_train, y_val, scaler = prepare_data(df, course, year_level)
-            
-            # Train model if not exists
-            model_key = f"{course}_year{year_level}"
-            if model_key not in models:
-                model, scaler, history = train_model(df, course, year_level)
-                models[model_key] = model
-                scalers[model_key] = scaler
-                model_histories[model_key] = history
-            
-            # Make prediction
-            model = models[model_key]
-            scaler = scalers[model_key]
-            
-            # Prepare input sequence
-            input_seq = get_input_sequence(df, course, year_level)
-            input_seq = scaler.transform(input_seq.reshape(-1, 1)).reshape(1, -1, 1)
-            
-            # Generate prediction
-            pred = model.predict(input_seq)
-            pred = scaler.inverse_transform(pred)[0][0]
-            
-            # Get historical data
-            historical = get_historical_data(df, course, year_level)
-            
-            # Add to results
-            if not results['historical']['dates']:
-                results['historical']['dates'] = historical['dates']
-            
-            results['historical']['by_year_level'][year_level] = historical['values']
-            results['predictions'][f"Year {year_level}"] = float(pred)
-            
-            # Calculate metrics for this year level
-            metrics = calculate_metrics(historical['values'][-4:], [pred])
-            results['metrics'][f"Year {year_level}"] = metrics
-        
-        # Calculate total values
-        results['historical']['values'] = [sum(results['historical']['by_year_level'][yl][i] 
-                                             for yl in YEAR_LEVELS) 
-                                         for i in range(len(results['historical']['dates']))]
-        
-        # Calculate overall metrics
-        total_pred = sum(results['predictions'].values())
-        total_actual = sum(v[-1] for v in results['historical']['by_year_level'].values())
-        results['metrics']['total'] = {
-            'mse': ((total_pred - total_actual) ** 2),
-            'rmse': abs(total_pred - total_actual),
-            'mape': abs((total_pred - total_actual) / total_actual) * 100 if total_actual != 0 else 0
+        # Store prediction data temporarily in session
+        session[prediction_id] = {
+            'course': course,
+            'department': department,
+            'year': year,
+            'semester': semester,
+            'predicted': predicted,
+            'lower': lower,
+            'upper': upper,
+            'target_date': target_date.strftime('%Y-%m-%d')
         }
 
-        # Prepare response data
-        response_data = {
-            'dates': results['historical']['dates'],
-            'values': results['historical']['values'],
-            'courses': list(DEPARTMENTS[department.upper()]),
-            'course_enrollments': [sum(results['historical']['by_year_level'][yl][-1] for yl in YEAR_LEVELS)],
-            'actual_dates': results['historical']['dates'][-4:],
-            'actual_values': results['historical']['values'][-4:],
-            'forecast_dates': [f'{year}-{semester}'],
-            'forecast_values': [total_pred],
-            'metrics': results['metrics']
-        }
-
-        # Store in session for download feature
-        dept = department.lower()
-        session[f'{dept}_line_chart'] = json.dumps({
-            'dates': response_data['dates'],
-            'values': response_data['values']
+        return jsonify({
+            "prediction_id": prediction_id,
+            "course": course,
+            "department": department,
+            "year": year,
+            "semester": semester,
+            "predicted_enrollment": predicted,
+            "lower_bound": lower,
+            "upper_bound": upper
         })
 
-        session[f'{dept}_bar_chart'] = json.dumps({
-            'courses': response_data['courses'],
-            'values': response_data['course_enrollments']
-        })
-
-        session[f'{dept}_comparison_chart'] = json.dumps({
-            'actual_dates': results['historical']['dates'][-4:],
-            'actual_values': results['historical']['values'][-4:],
-            'forecast_dates': [f'{year}-{semester}'],
-            'forecast_values': [total_pred]
-        })
-
-        # Bar chart data
-        session[f'{dept}_bar_chart'] = {
-            'courses': list(DEPARTMENTS[department]),
-            'values': [sum(results['historical']['by_year_level'][yl][-1] for yl in YEAR_LEVELS)]
-        }
-
-        # Comparison chart data
-        session[f'{dept}_comparison_chart'] = {
-            'actual_dates': results['historical']['dates'][-4:],
-            'actual_values': results['historical']['values'][-4:],
-            'forecast_dates': [f'{year}-{semester}' for _ in range(4)],
-            'forecast_values': [total_pred] * 4
-        }
-        
-        return jsonify(results)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/prediction_chart/<prediction_id>')
+def prediction_chart(prediction_id):
+    try:
+        # Retrieve prediction data from session
+        prediction_data = session.get(prediction_id)
+        if not prediction_data:
+            return "Prediction not found", 404
+        
+        course = prediction_data['course']
+        target_date = pd.to_datetime(prediction_data['target_date'])
+        predicted = prediction_data['predicted']
+        lower = prediction_data['lower']
+        upper = prediction_data['upper']
+        
+        # Load historical data if exists
+        enroll_file = os.path.join(app.config['UPLOAD_FOLDER'], "enrollees_dataset.csv")
+        if os.path.exists(enroll_file):
+            enroll_df = pd.read_csv(enroll_file)
+            course_enroll = enroll_df[enroll_df['Course'] == course].copy()
+            
+            if not course_enroll.empty:
+                # Convert School_Year to dates
+                def year_to_date(row):
+                    year_start = int(row['School_Year'].split('-')[0])
+                    if row['Semester'] == '1st':
+                        return f"{year_start}-06-01"
+                    else:
+                        return f"{year_start}-12-01"
+                
+                course_enroll['ds'] = course_enroll.apply(year_to_date, axis=1)
+                course_enroll['ds'] = pd.to_datetime(course_enroll['ds'])
+                course_enroll = course_enroll.sort_values('ds')
+                
+                labels = course_enroll['ds'].dt.strftime('%Y-%m').tolist() + [target_date.strftime('%Y-%m')]
+                actual_data = course_enroll['total_enrollees'].tolist() + [None]
+            else:
+                labels = [target_date.strftime('%Y-%m')]
+                actual_data = [None]
+        else:
+            labels = [target_date.strftime('%Y-%m')]
+            actual_data = [None]
+
+        forecast_data = [predicted]
+
+        # Create chart
+        plt.figure(figsize=(10, 5))
+        plt.plot(labels[:-1], actual_data[:-1], marker='o', label='Historical', color='blue')
+        plt.plot(labels[-1:], forecast_data, marker='o', label='Prediction', color='red')
+        plt.fill_between(labels[-1:], [lower], [upper], color='pink', alpha=0.4, label='Confidence Interval')
+        plt.title(f'{course} Enrollment Prediction')
+        plt.xlabel('Year-Month')
+        plt.ylabel('Number of Students')
+        plt.legend()
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        # Save chart to memory
+        from io import BytesIO
+        img_buffer = BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=150)
+        plt.close()
+        img_buffer.seek(0)
+        
+        # Return image
+        return send_file(img_buffer, mimetype='image/png', download_name=f'{course}_prediction.png')
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route("/select_department", methods=["POST"])
+def select_department():
+    department = request.form.get("department")
+    if department == "BED":
+        return redirect(url_for("bed_filter"))
+    elif department == "CED":
+        return redirect(url_for("ced_filter"))
+    else:
+        flash("Invalid department selected")
+        return redirect(url_for("index"))
+
 
 @app.route('/download_chart/<department>/<chart_type>')
 def download_chart(department, chart_type):
     try:
-        # Get chart data from session and deserialize JSON
-        chart_data_json = session.get(f'{department}_{chart_type}_chart')
+        chart_data_json = session.get(f'{department}_{chart_type}')
         if not chart_data_json:
             return jsonify({'error': 'No chart data available'}), 404
 
-        # Create a temporary file
-        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{department}_{chart_type}_chart.png')
+        chart_data = json.loads(chart_data_json)
+        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{department}_{chart_type}.png')
 
-        # Convert chart data to PNG
+        # Plot chart
         plt.figure(figsize=(12, 6))
-        if chart_type == 'line':
-            plt.plot(chart_data_json['dates'], chart_data_json['values'], marker='o')
-            plt.title(f'{department} Enrollment Trend')
-            plt.xlabel('Year-Semester')
-            plt.ylabel('Number of Students')
-        elif chart_type == 'bar':
-            plt.bar(chart_data_json['courses'], chart_data_json['values'])
-            plt.title(f'{department} Course Distribution')
-            plt.xlabel('Course')
-            plt.ylabel('Number of Students')
-        elif chart_type == 'comparison':
-            plt.plot(chart_data_json['actual_dates'], chart_data_json['actual_values'], marker='o', label='Actual')
-            plt.plot(chart_data_json['forecast_dates'], chart_data_json['forecast_values'], marker='o', linestyle='--', label='Forecast')
-            plt.title(f'{department} Actual vs Forecast')
+        if chart_type == 'forecast':
+            plt.plot(chart_data['forecast_dates'], chart_data['forecast_values'], marker='o', label='Forecast')
+            plt.fill_between(chart_data['forecast_dates'], chart_data['lower_bound'], chart_data['upper_bound'], color='lightblue', alpha=0.4)
+            plt.title(f'{department} Forecast')
             plt.xlabel('Year-Semester')
             plt.ylabel('Number of Students')
             plt.legend()
@@ -429,94 +490,16 @@ def download_chart(department, chart_type):
             temp_file,
             mimetype='image/png',
             as_attachment=True,
-            download_name=f'{department}_{chart_type}_chart.png'
+            download_name=f'{department}_{chart_type}.png'
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        # Clean up the temporary file
         if 'temp_file' in locals() and os.path.exists(temp_file):
             try:
                 os.remove(temp_file)
             except:
                 pass
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-        
-    if not file.filename.endswith('.csv'):
-        return jsonify({'error': 'Invalid file type. Please upload a CSV file'}), 400
-    
-    if not models:
-        return jsonify({'error': 'Models not trained. Please restart the server.'}), 500
-    
-    if file and file.filename.endswith('.csv'):
-        try:
-            # Read and process the uploaded file
-            df = pd.read_csv(file, index_col='Year_Semester')
-            
-            # Validate columns
-            required_columns = ['BSBA-FM', 'BSBA-MM', 'BSIT', 'BSCS']
-            if not all(col in df.columns for col in required_columns):
-                return jsonify({'error': 'CSV must contain columns: ' + ', '.join(required_columns)}), 400
-            
-            # Store for predictions
-            data_store['prediction_data'] = df
-            
-            # Make predictions using trained models
-            results = {}
-            for course in required_columns:
-                # Get last sequence for prediction
-                scaled_data = scalers[course].transform(df[course].values.reshape(-1, 1))
-                last_sequence = scaled_data[-4:]
-                
-                # Make predictions
-                future_predictions = predict_future(models[course], scalers[course], last_sequence, n_future=6)
-                
-                # Calculate metrics on test data
-                X_test, y_test = create_sequences(scaled_data, 4)
-                X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
-                y_pred = models[course].predict(X_test).flatten()
-                y_pred = scalers[course].inverse_transform(y_pred.reshape(-1, 1)).flatten()
-                y_true = df[course].values[-len(y_pred):]
-                
-                metrics = calculate_metrics(y_true, y_pred)
-                
-                # Generate future dates
-                last_date = pd.to_datetime(df.index[-1])
-                future_dates = []
-                for i in range(6):
-                    if (i % 2) == 0:
-                        future_dates.append(f"{last_date.year + (i//2) + 1}-1")
-                    else:
-                        future_dates.append(f"{last_date.year + (i//2) + 1}-2")
-                
-                results[course] = {
-                    'historical': {
-                        'dates': df.index.tolist(),
-                        'values': df[course].tolist()
-                    },
-                    'predictions': {
-                        'dates': future_dates,
-                        'values': future_predictions
-                    },
-                    'metrics': metrics,
-                    'model_summary': {
-                        'architecture': str(models[course].summary()),
-                        'training_history': str(model_histories[course].history)
-                    }
-                }
-            
-            return jsonify(results)
-            
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

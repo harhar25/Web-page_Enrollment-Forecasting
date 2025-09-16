@@ -220,19 +220,6 @@
             </div>
         </div>
 
-        <!-- Department Selection -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <button class="department-btn bed" data-department="BED">
-                    <i class='bx bx-building-house'></i> Business Education Department
-                </button>
-            </div>
-            <div class="col-md-6">
-                <button class="department-btn ced" data-department="CED">
-                    <i class='bx bx-code-block'></i> Computer Education Department
-                </button>
-            </div>
-        </div>
 
         <!-- BED Dashboard -->
         <div id="bedDashboard" class="dashboard">
@@ -271,45 +258,40 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- Filters Section -->
             <div class="row mb-4">
                 <div class="col-12">
-                    <div class="card dashboard-card">
-                        <div class="card-body">
-                            <h5 class="card-title">Filters</h5>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group mb-3">
-                                        <label class="filter-label">Course</label>
-                                        <select class="form-control" id="bedCourse">
-                                            <!-- Populated dynamically -->
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group mb-3">
-                                        <label class="filter-label">Year</label>
-                                        <select class="form-control" id="bedYear">
-                                            <!-- Populated dynamically -->
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group mb-3">
-                                        <label class="filter-label">Semester</label>
-                                        <select class="form-control" id="bedSemester">
-                                            <option value="1">First</option>
-                                            <option value="2">Second</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="card dashboard-card">
+                    <div class="card-body text-center">
+                    <h5 class="card-title">Filters</h5>
+            
+                    <!-- Compare Button -->
+                    <form action="{{ url_for('comparefilter') }}" method="GET">
+                        <button type="submit" class="btn btn-primary px-5 py-3" style="font-weight:600; border-radius:10px;">
+                        COMPARE
+                        </button>
+                    </form>
+            
+                    </div>
+                </div>
+                </div>
+            </div>
+  
+            
+
+                            <!-- Generate Button -->
                             <div class="row mt-3">
                                 <div class="col-12">
                                     <button class="btn btn-primary" onclick="predict('BED')">Generate Forecast</button>
                                 </div>
                             </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
                             <!-- Metrics Section -->
                             <div class="row mt-4">

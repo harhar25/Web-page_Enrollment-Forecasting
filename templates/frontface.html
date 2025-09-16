@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enrollment Forecasting System | Department Selection</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+      --secondary-gradient: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+      --dark-blue: #2e59d9;
+      --dark-green: #17a673;
+      --light-bg: #f8f9fc;
+      --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--light-bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 5% 10%, rgba(78, 115, 223, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 95% 10%, rgba(28, 200, 138, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 50% 90%, rgba(78, 115, 223, 0.05) 0%, transparent 20%);
+      z-index: -1;
+    }
+    
+    .main-container {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      position: relative;
+    }
+    
+    .header h1 {
+      font-weight: 700;
+      color: #4e73df;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+    }
+    
+    .header p {
+      color: #858796;
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .header::after {
+      content: "";
+      display: block;
+      width: 80px;
+      height: 4px;
+      background: var(--primary-gradient);
+      margin: 1.5rem auto;
+      border-radius: 2px;
+    }
+    
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+    }
+    
+    .department-card {
+      flex: 1;
+      min-width: 300px;
+      max-width: 400px;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      transition: var(--transition);
+      position: relative;
+    }
+    
+    .department-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 0.5rem 2.5rem rgba(58, 59, 69, 0.25);
+    }
+    
+    .department-card.bed::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: var(--primary-gradient);
+    }
+    
+    .department-card.ced::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: var(--secondary-gradient);
+    }
+    
+    .card-content {
+      padding: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    .icon-container {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      transition: var(--transition);
+    }
+    
+    .bed .icon-container {
+      background: rgba(78, 115, 223, 0.1);
+      color: var(--dark-blue);
+    }
+    
+    .ced .icon-container {
+      background: rgba(28, 200, 138, 0.1);
+      color: var(--dark-green);
+    }
+    
+    .department-card:hover .icon-container {
+      transform: scale(1.1);
+    }
+    
+    .icon-container i {
+      font-size: 2.5rem;
+    }
+    
+    .card-content h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #5a5c69;
+    }
+    
+    .card-content p {
+      color: #858796;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+      flex-grow: 1;
+    }
+    
+    .department-btn {
+      padding: 0.875rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .department-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+    
+    .department-btn:hover::before {
+      left: 100%;
+    }
+    
+    .bed .department-btn {
+      background: var(--primary-gradient);
+      color: white;
+    }
+    
+    .bed .department-btn:hover {
+      background: linear-gradient(135deg, #3a59c7 0%, #1a3bb8 100%);
+    }
+    
+    .ced .department-btn {
+      background: var(--secondary-gradient);
+      color: white;
+    }
+    
+    .ced .department-btn:hover {
+      background: linear-gradient(135deg, #18b980 0%, #0f7350 100%);
+    }
+    
+    .btn-icon {
+      margin-left: 0.5rem;
+      transition: var(--transition);
+    }
+    
+    .department-btn:hover .btn-icon {
+      transform: translateX(4px);
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: #858796;
+      font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+      .card-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .department-card {
+        min-width: 100%;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <div class="header animate__animated animate__fadeInDown">
+      <h1>Enrollment Forecasting System</h1>
+      <p>Select a department to access enrollment forecasting tools and historical data analysis</p>
+    </div>
+    
+    <form method="POST" action="{{ url_for('select_department') }}">
+      <div class="card-container">
+        <div class="department-card bed animate__animated animate__fadeInLeft">
+          <div class="card-content">
+            <div class="icon-container">
+              <i class='bx bx-building-house'></i>
+            </div>
+            <h3>Business Education Department</h3>
+            <p>Access forecasting tools for business programs including Financial Management, Marketing Management, and other business-related courses.</p>
+            <button class="department-btn" type="submit" name="department" value="BED">
+              Select BED <i class='bx bx-chevron-right btn-icon'></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="department-card ced animate__animated animate__fadeInRight">
+          <div class="card-content">
+            <div class="icon-container">
+              <i class='bx bx-code-block'></i>
+            </div>
+            <h3>Computer Education Department</h3>
+            <p>Access forecasting tools for computer science and IT programs including Software Engineering, Data Science, and other technology courses.</p>
+            <button class="department-btn" type="submit" name="department" value="CED">
+              Select CED <i class='bx bx-chevron-right btn-icon'></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+    
+    <div class="footer animate__animated animate__fadeInUp">
+      <p>© 2023 Enrollment Forecasting System | Enterprise Edition</p>
+    </div>
+  </div>
+
+  <script>
+    // Add subtle animations on hover
+    document.querySelectorAll('.department-card').forEach(card => {
+      card.addEventListener('mouseenter', function() {
+        this.classList.add('animate__pulse');
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.classList.remove('animate__pulse');
+      });
+    });
+  </script>
+</body>
+</html>

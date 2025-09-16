@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ course }} Historical Data</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-color: #4e73df;
+      --secondary-color: #858796;
+      --success-color: #1cc88a;
+      --info-color: #36b9cc;
+      --warning-color: #f6c23e;
+      --danger-color: #e74a3b;
+      --light-bg: #f8f9fc;
+      --dark-bg: #5a5c69;
+    }
+    
+    body {
+      background-color: var(--light-bg);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding-bottom: 2rem;
+    }
+    
+    .dashboard-header {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--info-color) 100%);
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+      border-radius: 0 0 15px 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card {
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      background: white;
+      border: none;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+      height: 100%;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .card-title {
+      color: var(--primary-color);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--dark-bg);
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin-bottom: 2rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+    }
+    
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .chart-title {
+      color: var(--primary-color);
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .back-btn {
+      background: var(--primary-color);
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      border: none;
+      transition: 0.3s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .back-btn:hover {
+      background: var(--danger-color);
+      color: white;
+    }
+    
+    .download-btn {
+      background: var(--success-color);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      border: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .download-btn:hover {
+      background: #17a673;
+      transform: translateY(-2px);
+    }
+    
+    .small-chart {
+      height: 300px;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateX(100px);
+      transition: all 0.3s ease;
+    }
+    
+    .notification.success {
+      background-color: var(--success-color);
+    }
+    
+    .notification.error {
+      background-color: var(--danger-color);
+    }
+    
+    .notification.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .upload-section {
+      background: white;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Fix for table overflow */
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      background: white;
+      margin-bottom: 2rem;
+    }
+    
+    .table-container .table {
+      margin-bottom: 0;
+    }
+    
+    .table-container thead th {
+      position: sticky;
+      top: 0;
+      background-color: var(--primary-color);
+      color: white;
+      z-index: 10;
+    }
+    
+    /* Custom scrollbar for table */
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 0 10px 10px 0;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 10px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+  </style>
+</head>
+<body>
+  <!-- Notification System -->
+  <div id="notification" class="notification" style="display: none;"></div>
+
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1>Historical Enrollment Data</h1>
+          <p class="lead">{{ course }} • {{ year }} • Semester {{ semester }}</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <a href="{{ url_for('index') }}" class="back-btn">← Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">
+          {% for msg in messages %}
+            <p>{{ msg }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Upload Dataset Section -->
+    <div class="upload-section">
+      <h3 class="chart-title">Upload Additional Dataset</h3>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="row">
+          <div class="col-md-8">
+            <input type="file" class="form-control" id="datasetFile" accept=".csv" required>
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-success w-100">Upload Dataset</button>
+          </div>
+        </div>
+        <div class="form-text mt-2">Upload CSV files to add more historical data to the system</div>
+      </form>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="stat-card p-3 text-center">
+          <h5 class="card-title">Data Points</h5>
+          <div class="stat-number">
+            {% set valid_data = actual_data | select | list %}
+            {{ valid_data | length }}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card p-3 text-center">
+          <h5 class="card-title">Average Enrollment</h5>
+          <div class="stat-number">
+            {% set valid_data = actual_data | select | list %}
+            {% if valid_data | length > 0 %}
+              {{ (valid_data | sum / valid_data | length) | round(2) }}
+            {% else %}
+              0
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card p-3 text-center">
+          <h5 class="card-title">Latest Enrollment</h5>
+          <div class="stat-number">
+            {% set valid_data = actual_data | select | list %}
+            {{ valid_data[-1] if valid_data | length > 0 else "N/A" }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Historical Chart -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 class="chart-title">Enrollment Trend Over Time</h3>
+        <button class="download-btn" onclick="downloadChart('historicalChart', 'enrollment-trend.png')">
+          📥 Download
+        </button>
+      </div>
+      <canvas id="historicalChart"></canvas>
+    </div>
+
+    <div class="row">
+      <!-- Pie Chart -->
+      <div class="col-md-6">
+        <div class="chart-container small-chart">
+          <div class="chart-header">
+            <h3 class="chart-title">Enrollment Distribution</h3>
+            <button class="download-btn" onclick="downloadChart('pieChart', 'enrollment-distribution.png')">
+              📥 Download
+            </button>
+          </div>
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Bar Chart -->
+      <div class="col-md-6">
+        <div class="chart-container small-chart">
+          <div class="chart-header">
+            <h3 class="chart-title">Enrollment by Period</h3>
+            <button class="download-btn" onclick="downloadChart('barChart', 'enrollment-by-period.png')">
+              📥 Download
+            </button>
+          </div>
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Summary -->
+    <div class="table-container">
+      <div class="chart-header p-3">
+        <h3 class="chart-title mb-0">Enrollment Data Summary</h3>
+        <button class="download-btn" onclick="downloadTable()">
+          📥 Download Table
+        </button>
+      </div>
+      <table class="table table-hover" id="dataTable">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Enrollment</th>
+            <th>Change</th>
+            <th>Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in range(actual_data | length) %}
+            <tr>
+              <td>{{ labels[i] }}</td>
+              <td>{{ actual_data[i] if actual_data[i] is not none else "N/A" }}</td>
+              <td>
+                {% if i > 0 and actual_data[i] is not none and actual_data[i-1] is not none %}
+                  {% set change = actual_data[i] - actual_data[i-1] %}
+                  {{ change }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td>
+                {% if i > 0 and actual_data[i] is not none and actual_data[i-1] is not none %}
+                  {% if actual_data[i] > actual_data[i-1] %}
+                    <span class="badge bg-success">↑ Increasing</span>
+                  {% elif actual_data[i] < actual_data[i-1] %}
+                    <span class="badge bg-danger">↓ Decreasing</span>
+                  {% else %}
+                    <span class="badge bg-secondary">→ Stable</span>
+                  {% endif %}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('bed_filter') if 'BSBA' in course else url_for('ced_filter') }}" class="back-btn">← Back to Filters</a>
+      <a href="{{ url_for('index') }}" class="back-btn" style="margin-left: 10px;">Go to Home</a>
+    </div>
+  </div>
+
+<script>
+// Prepare data
+const actualData = {{ actual_data | tojson | safe }};
+const labels = {{ labels | tojson | safe }};
+
+// Filter out null values for chart display
+const validData = actualData.filter(item => item !== null && item !== undefined);
+const validLabels = labels.slice(0, validData.length);
+
+// Find the index where forecast data starts
+const forecastStartIndex = validData.length;
+
+// Store chart instances
+const charts = {};
+
+// Notification function
+function showNotification(message, type = 'success') {
+  const notification = document.getElementById('notification');
+  notification.textContent = message;
+  notification.className = `notification ${type}`;
+  notification.style.display = 'block';
+  
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 100);
+  
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => {
+      notification.style.display = 'none';
+    }, 300);
+  }, 3000);
+}
+
+// Download chart as image
+function downloadChart(canvasId, filename) {
+  const canvas = document.getElementById(canvasId);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showNotification('Chart downloaded successfully!');
+}
+
+// Download table as CSV
+function downloadTable() {
+  const table = document.getElementById('dataTable');
+  let csv = [];
+  
+  // Get headers
+  const headers = [];
+  for (let i = 0; i < table.rows[0].cells.length; i++) {
+    headers.push(table.rows[0].cells[i].textContent);
+  }
+  csv.push(headers.join(','));
+  
+  // Get data rows
+  for (let i = 1; i < table.rows.length; i++) {
+    const row = [];
+    for (let j = 0; j < table.rows[i].cells.length; j++) {
+      let cellContent = table.rows[i].cells[j].textContent;
+      // Handle trend indicators
+      if (cellContent.includes('Increasing') || cellContent.includes('Decreasing') || cellContent.includes('Stable')) {
+        cellContent = cellContent.includes('Increasing') ? 'Increasing' : 
+                     cellContent.includes('Decreasing') ? 'Decreasing' : 'Stable';
+      }
+      row.push(`"${cellContent}"`);
+    }
+    csv.push(row.join(','));
+  }
+  
+  // Create download link
+  const csvContent = "data:text/csv;charset=utf-8," + csv.join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "enrollment_data.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showNotification('Table downloaded successfully!');
+}
+
+// Handle dataset upload
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const fileInput = document.getElementById('datasetFile');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    showNotification('Please select a file to upload', 'error');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('course', '{{ course }}');
+  
+  try {
+    const response = await fetch('/upload_dataset', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showNotification('Dataset uploaded successfully!');
+      fileInput.value = ''; // Clear file input
+      // Reload page after 2 seconds to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } else {
+      showNotification(result.error || 'Upload failed', 'error');
+    }
+  } catch (error) {
+    showNotification('Upload error: ' + error.message, 'error');
+  }
+});
+
+// 1. Main Historical Chart with proper boundaries
+charts.historical = new Chart(document.getElementById('historicalChart'), {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Historical Enrollment',
+      data: actualData.map((val, idx) => idx < forecastStartIndex ? val : null),
+      borderColor: '#4e73df',
+      backgroundColor: 'rgba(78, 115, 223, 0.1)',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 4,
+      borderWidth: 2
+    },
+    {
+      label: 'Forecast',
+      data: actualData.map((val, idx) => idx >= forecastStartIndex ? val : null),
+      borderColor: '#1cc88a',
+      backgroundColor: 'rgba(28, 200, 138, 0.1)',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 4,
+      borderWidth: 2,
+      borderDash: [5, 5]
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Number of Students'
+        },
+        grace: '5%' // Add some padding to prevent cutting off data
+      },
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'top',
+      }
+    }
+  }
+});
+
+// 2. Pie Chart - Enrollment Distribution (only historical data)
+if (validData.length > 0) {
+  charts.pie = new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+      labels: validLabels,
+      datasets: [{
+        data: validData,
+        backgroundColor: [
+          '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', 
+          '#e74a3b', '#858796', '#6f42c1', '#20c9a6'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 15,
+            padding: 15
+          }
+        }
+      }
+    }
+  });
+} else {
+  document.getElementById('pieChart').getContext('2d').fillText('No data available', 10, 10);
+}
+
+// 3. Bar Chart (only historical data)
+if (validData.length > 0) {
+  charts.bar = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: validLabels,
+      datasets: [{
+        label: 'Enrollment',
+        data: validData,
+        backgroundColor: '#36b9cc',
+        borderColor: '#36b9cc',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Number of Students'
+          },
+          grace: '5%'
+        },
+        x: {
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+  });
+} else {
+  document.getElementById('barChart').getContext('2d').fillText('No data available', 10, 10);
+}
+</script>
+</body>
+</html>
