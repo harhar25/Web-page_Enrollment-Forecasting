@@ -262,6 +262,24 @@
   </style>
 </head>
 <body>
+  <!-- Upload Dataset Section -->
+<div class="upload-section mt-5 animate__animated animate__fadeInUp">
+  <div class="card">
+    <div class="card-body">
+      <h3 class="text-center mb-4">Upload New Dataset</h3>
+      <form id="uploadForm" enctype="multipart/form-data" class="text-center">
+        <div class="mb-3">
+          <label for="datasetFile" class="form-label">Select CSV file to upload</label>
+          <input type="file" class="form-control" id="datasetFile" accept=".csv" required>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class='bx bx-upload'></i> Upload Dataset
+        </button>
+      </form>
+      <div id="uploadStatus" class="mt-3"></div>
+    </div>
+  </div>
+</div>
   <div class="main-container">
     <div class="header animate__animated animate__fadeInDown">
       <h1>Enrollment Forecasting System</h1>
