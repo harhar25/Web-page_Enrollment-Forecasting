@@ -1,0 +1,26 @@
+FEATURE NAMES:
+  0. Start_Year
+  1. Semester_Order
+  2. Lag_1_Enrollees
+  3. Rolling_Mean_3
+  4. Rolling_Std_3
+  5. Growth_Rate
+  6. Year_Semester_Interaction
+  7. Time_Index
+  8. Enrollment_Trend
+  9. Dept_Enrollment_Ratio
+ 10. Semester_Sin
+ 11. Semester_Cos
+ 12. Semester_1st
+ 13. Semester_2nd
+ 14. Course_BSBA-FINANCIAL_MANAGEMENT
+ 15. Course_BSBA-MARKETING_MANAGEMENT
+ 16. Course_BSCS
+ 17. Course_BSIT
+ 18. Year_Level_1st_year
+ 19. Year_Level_2nd_year
+ 20. Year_Level_3rd_year
+ 21. Year_Level_4th_year
+ 22. Department_BA
+ 23. Department_CS
+ 24. Department_IT
