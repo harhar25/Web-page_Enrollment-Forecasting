@@ -9,10 +9,15 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
   <style>
     :root {
-      --primary-gradient: linear-gradient(135deg, #36b9cc 0%, #258391 100%);
-      --secondary-gradient: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+      --primary: #36b9cc;
+      --primary-dark: #258391;
+      --secondary: #1cc88a;
+      --secondary-dark: #13855c;
       --light-bg: #f8f9fc;
-      --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+      --dark-text: #2e3a59;
+      --mid-text: #5a5c69;
+      --light-text: #858796;
+      --card-shadow: 0 0.5rem 1.5rem rgba(58, 59, 69, 0.2);
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     
@@ -28,6 +33,7 @@
       min-height: 100vh;
       padding: 2rem 0;
       position: relative;
+      color: var(--mid-text);
     }
     
     body::before {
@@ -43,6 +49,38 @@
       z-index: -1;
     }
     
+    .page-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .page-title {
+      color: var(--dark-text);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .page-title::after {
+      content: "";
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      border-radius: 2px;
+    }
+    
+    .page-subtitle {
+      color: var(--mid-text);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
     .dashboard-card {
       border-radius: 16px;
       box-shadow: var(--card-shadow);
@@ -51,6 +89,7 @@
       border: none;
       margin-bottom: 2rem;
       overflow: hidden;
+      position: relative;
     }
     
     .dashboard-card::before {
@@ -59,85 +98,107 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 8px;
-      background: var(--primary-gradient);
+      height: 6px;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
     }
     
     .dashboard-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 0.5rem 2.5rem rgba(58, 59, 69, 0.25);
+      box-shadow: 0 1rem 3rem rgba(58, 59, 69, 0.25);
+    }
+    
+    .card-header {
+      background: transparent;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      padding: 1.5rem 1.5rem 0.5rem;
     }
     
     .card-title {
-      color: #36b9cc;
+      color: var(--primary);
       font-weight: 700;
-      margin-bottom: 1.5rem;
-      font-size: 1.5rem;
-      position: relative;
-      padding-bottom: 0.75rem;
+      margin-bottom: 0;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
     }
     
-    .card-title::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 60px;
-      height: 4px;
-      background: var(--primary-gradient);
-      border-radius: 2px;
+    .card-title i {
+      margin-right: 10px;
+      font-size: 1.6rem;
+    }
+    
+    .card-body {
+      padding: 1.5rem;
     }
     
     .filter-label {
       font-weight: 600;
-      color: #5a5c69;
+      color: var(--mid-text);
       margin-bottom: 0.75rem;
       display: block;
     }
     
-    .form-control {
-      border-radius: 8px;
+    .form-control, .form-select {
+      border-radius: 10px;
       padding: 0.75rem 1rem;
       border: 1px solid #d1d3e2;
       transition: var(--transition);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
     }
     
-    .form-control:focus {
-      border-color: #36b9cc;
-      box-shadow: 0 0 0 0.2rem rgba(54, 185, 204, 0.25);
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(54, 185, 204, 0.15);
     }
     
     .btn-primary {
-      background: var(--primary-gradient);
+      background: linear-gradient(to right, var(--primary), var(--primary-dark));
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 0.875rem 1.5rem;
+      font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(54, 185, 204, 0.2);
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(to right, var(--primary-dark), #1e717e);
+      transform: translateY(-2px);
+      box-shadow: 0 7px 20px rgba(54, 185, 204, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
       font-weight: 600;
       transition: var(--transition);
     }
     
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #2da0b1 0%, #1e717e 100%);
+    .btn-secondary:hover {
+      background: #5a6268;
       transform: translateY(-2px);
     }
     
     .predict-btn {
-      background: var(--secondary-gradient);
+      background: linear-gradient(to right, var(--secondary), var(--secondary-dark));
       color: white;
       padding: 0.875rem 2rem;
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: 600;
       transition: var(--transition);
       border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 4px 15px rgba(28, 200, 138, 0.2);
     }
     
     .predict-btn:hover {
-      background: linear-gradient(135deg, #18b980 0%, #0f7350 100%);
+      background: linear-gradient(to right, var(--secondary-dark), #0f7350);
       transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(28, 200, 138, 0.4);
+      box-shadow: 0 7px 20px rgba(28, 200, 138, 0.3);
     }
     
     .btn-icon {
@@ -150,7 +211,7 @@
     }
     
     .divider {
-      height: 2px;
+      height: 1px;
       background: linear-gradient(to right, transparent, #d1d3e2, transparent);
       margin: 2rem 0;
       border: none;
@@ -170,13 +231,15 @@
     }
     
     .alert-success {
-      border-radius: 10px;
-      border-left: 5px solid #1cc88a;
+      border-radius: 12px;
+      border-left: 5px solid var(--secondary);
       box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+      background: linear-gradient(to right, rgba(28, 200, 138, 0.05), rgba(28, 200, 138, 0.1));
+      border: none;
     }
     
     .form-text {
-      color: #858796;
+      color: var(--light-text);
       font-size: 0.85rem;
       margin-top: 0.5rem;
     }
@@ -186,43 +249,148 @@
       top: 20px;
       right: 20px;
       padding: 1rem 1.5rem;
-      border-radius: 8px;
+      border-radius: 10px;
       color: white;
       font-weight: 600;
       z-index: 1000;
       opacity: 0;
       transform: translateX(100px);
       transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     
     .notification.success {
-      background-color: #1cc88a;
+      background: linear-gradient(to right, var(--secondary), var(--secondary-dark));
     }
     
     .notification.error {
-      background-color: #e74a3b;
+      background: linear-gradient(to right, #e74a3b, #c0352d);
     }
     
     .notification.show {
       opacity: 1;
       transform: translateX(0);
     }
+    
+    .result-card {
+      background: linear-gradient(to right, rgba(54, 185, 204, 0.03), rgba(28, 200, 138, 0.03));
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .result-title {
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+    }
+    
+    .result-title i {
+      margin-right: 10px;
+      font-size: 1.5rem;
+    }
+    
+    .result-item {
+      display: flex;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .result-label {
+      font-weight: 600;
+      min-width: 160px;
+      color: var(--mid-text);
+    }
+    
+    .result-value {
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .confidence-interval {
+      background: rgba(28, 200, 138, 0.1);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      display: inline-block;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .stat-box {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+    
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0.5rem 0;
+    }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--mid-text);
+    }
+    
+    @media (max-width: 768px) {
+      .card-title {
+        font-size: 1.2rem;
+      }
+      
+      .result-item {
+        flex-direction: column;
+      }
+      
+      .result-label {
+        margin-bottom: 0.25rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container mt-5">
-    <div class="row mb-4">
+  <div class="container mt-4">
+    <!-- Page Header -->
+    <div class="page-header mb-5">
+      <h1 class="page-title">CED Enrollment Forecasting System</h1>
+      <p class="page-subtitle">Predict student enrollment patterns for Computer Science and IT programs</p>
+    </div>
+    
+    <div class="row">
       <div class="col-12">
         <div class="card dashboard-card animate__animated animate__fadeIn">
-          <div class="card-body p-4">
-            <h5 class="card-title">CED Enrollment Forecasting</h5>
+          <div class="card-header">
+            <h5 class="card-title"><i class='bx bx-line-chart'></i> Historical Forecast Analysis</h5>
+          </div>
+          <div class="card-body">
+            <!-- Back Button -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <a href="landing_page.html" class="btn btn-secondary">
+                  <i class='bx bx-arrow-back'></i> Back to Home
+                </a>
+              </div>
+            </div>
             
             <!-- HISTORICAL FORECAST FORM -->
             <form id="forecastForm" action="{{ url_for('forecast') }}" method="POST" onsubmit="return validateForecastForm()">
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="filter-label">Course</label>
-                  <select name="course" id="courseSelect" class="form-control" required>
+                  <select name="course" id="courseSelect" class="form-select" required>
                     <option value="">-- Select Course --</option>
                     <option value="BSCS">BSCS - Computer Science</option>
                     <option value="BSIT">BSIT - Information Technology</option>
@@ -230,7 +398,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="filter-label">Year</label>
-                  <select name="year" id="yearSelect" class="form-control" required>
+                  <select name="year" id="yearSelect" class="form-select" required>
                     <option value="">-- Select Year --</option>
                     <option value="2018-2019">2018 - 2019</option>
                     <option value="2019-2020">2019 - 2020</option>
@@ -243,30 +411,33 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="filter-label">Semester</label>
-                  <select name="semester" id="semesterSelect" class="form-control" required>
+                  <select name="semester" id="semesterSelect" class="form-select" required>
                     <option value="">-- Select Semester --</option>
                     <option value="1">1st Semester</option>
                     <option value="2">2nd Semester</option>
                   </select>
                 </div>
               </div>
-              <button type="submit" class="btn btn-primary mt-3">
-                Generate Historical Forecast <i class='bx bx-line-chart btn-icon'></i>
-              </button>
+              <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary">
+                  Generate Historical Forecast <i class='bx bx-line-chart btn-icon'></i>
+                </button>
+              </div>
             </form>
-
+            
             <hr class="divider">
 
             <!-- PREDICT ENROLLMENT SECTION -->
             <div id="predictEnrollmentSection">
-              <h5 class="card-title">Predict Future Enrollment</h5>
+              <h5 class="card-title"><i class='bx bx-trending-up'></i> Future Enrollment Prediction</h5>
+              <p class="mb-3">Predict student enrollment for future semesters using our forecasting model</p>
               
               <!-- Initially hidden form -->
               <div id="predictFormContainer" class="hidden animate__animated animate__fadeIn">
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="filter-label">Course</label>
-                    <select name="course" id="predictCourse" class="form-control" required>
+                    <select name="course" id="predictCourse" class="form-select" required>
                       <option value="">-- Select Course --</option>
                       <option value="BSCS">BSCS - Computer Science</option>
                       <option value="BSIT">BSIT - Information Technology</option>
@@ -274,7 +445,7 @@
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="filter-label">Semester</label>
-                    <select name="semester" id="predictSemester" class="form-control" required>
+                    <select name="semester" id="predictSemester" class="form-select" required>
                       <option value="">-- Select Semester --</option>
                       <option value="1">1st Semester</option>
                       <option value="2">2nd Semester</option>
@@ -287,15 +458,19 @@
                     <div class="form-text">Format: YYYY-YYYY (e.g., 2026-2027)</div>
                   </div>
                 </div>
-                <button type="button" class="btn predict-btn mt-3" onclick="predictEnrollment()">
-                  Predict Enrollment <i class='bx bx-trending-up btn-icon'></i>
-                </button>
+                <div class="text-center mt-4">
+                  <button type="button" class="btn predict-btn" onclick="predictEnrollment()">
+                    Predict Enrollment <i class='bx bx-trending-up btn-icon'></i>
+                  </button>
+                </div>
               </div>
               
               <!-- Show form button -->
-              <button id="showPredictFormBtn" type="button" class="btn predict-btn mt-3" onclick="showPredictForm()">
-                Predict Future Enrollment <i class='bx bx-chevron-right btn-icon'></i>
-              </button>
+              <div class="text-center mt-4" id="showPredictFormBtn">
+                <button type="button" class="btn predict-btn" onclick="showPredictForm()">
+                  Predict Future Enrollment <i class='bx bx-chevron-right btn-icon'></i>
+                </button>
+              </div>
             </div>
 
             <!-- Result placeholder -->
@@ -381,6 +556,16 @@
     }
 
     try {
+      // Show loading state
+      document.getElementById('predictionResult').innerHTML = `
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Processing your prediction...</p>
+        </div>
+      `;
+
       const response = await fetch("/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -391,21 +576,38 @@
       
       if (data.error) {
         showNotification("Error: " + data.error, "error");
+        document.getElementById('predictionResult').innerHTML = '';
       } else {
         // Display prediction result
         document.getElementById('predictionResult').innerHTML = `
-          <div class="alert alert-success">
-            <h5>Prediction Result</h5>
-            <p><strong>Course:</strong> ${data.course}</p>
-            <p><strong>School Year:</strong> ${data.year} - Semester ${data.semester}</p>
-            <p><strong>Predicted Enrollment:</strong> ${data.predicted_enrollment}</p>
-            <p><strong>Confidence Interval:</strong> ${data.lower_bound} to ${data.upper_bound}</p>
+          <div class="result-card">
+            <h5 class="result-title"><i class='bx bx-stats'></i> Prediction Result</h5>
+            <div class="result-item">
+              <span class="result-label">Course:</span>
+              <span class="result-value">${data.course}</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">School Year:</span>
+              <span class="result-value">${data.year} - Semester ${data.semester}</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Predicted Enrollment:</span>
+              <span class="result-value">${data.predicted_enrollment} students</span>
+            </div>
+            <div class="mt-3">
+              <span class="result-label">Confidence Interval:</span>
+              <div class="confidence-interval">
+                <strong>${data.lower_bound} to ${data.upper_bound} students</strong>
+                <p class="mb-0 mt-1 small">95% confidence level</p>
+              </div>
+            </div>
           </div>
         `;
         showNotification("Prediction completed successfully!");
       }
     } catch (error) {
       showNotification("Error: " + error.message, "error");
+      document.getElementById('predictionResult').innerHTML = '';
     }
   }
   </script>
